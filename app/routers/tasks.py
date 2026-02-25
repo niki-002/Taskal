@@ -1,14 +1,14 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from app.schemas import TaskCreateResponse, TaskCreate
+from app.schemas import TaskCreateResponse, TaskCreate, TaskReadResponse
 from app.db import get_db
 import app.crud as crud
 
 router = APIRouter()
 
-@router.get("/tasks")
-def list_tasks():
-    pass
+@router.get("/tasks", response_model=list[TaskReadResponse])
+def list_tasks(db: Session = Depends(get_db)):
+    return crud.read_tasks(db)
 
 @router.get("/tasks")
 def list_task():

@@ -12,5 +12,9 @@ class TaskCreate(TaskBase):
 class TaskCreateResponse(TaskBase):
     id: int
 
+class TaskReadResponse(TaskBase):
+    id: int
+    done_flag: bool = Field(False, description="完了フラグ")
+
     class Config:
         orm_mode = True

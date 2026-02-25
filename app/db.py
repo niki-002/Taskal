@@ -14,6 +14,7 @@ Base = declarative_base()
 
 def get_db():
     try:
-        yield db_session
+        yield db_session()
     finally:
-        db_session.close()
+        db_session().close()
+# db_sessionが1リクエスト中のDB操作単位
