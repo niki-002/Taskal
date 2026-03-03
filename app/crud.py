@@ -1,12 +1,12 @@
 from fastapi import HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, delete
 from sqlalchemy.orm import Session, session
 from .models import Task
 import app.schemas as schemas
 
-def create_task(created_task: schemas.TaskCreate, db: Session) -> Task:
-    new_task = Task(**created_task.dict())
-    db.add(new_task)
+def create_task(new_task: schemas.TaskCreate, db: Session) -> Task:
+    task = Task(**new_task.dict())
+    db.add(task)
     db.commit()
     db.refresh(new_task)
     return new_task
@@ -19,3 +19,10 @@ def get_task(task_id: int, db: Session) -> Task:
     if task is None:
         raise HTTPException(status_code=404, detail="task not found")
     return task
+
+def delete_task(deleted_task_id: int, db: Session) -> None:
+    deleted_task = db.scalar(select(Task).where(Task.id == deleted_task_id))
+    if deleted_task is None:
+        raise HTTPException(status_code=404, detail="task not found")
+    db.delete(deleted_task)
+    db.commit()

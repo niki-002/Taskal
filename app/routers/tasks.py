@@ -11,7 +11,7 @@ router = APIRouter()
 def list_tasks(db: Session = Depends(get_db)):
     return crud.get_tasks(db)
 
-@router.get("/tasks/task", response_model=TaskReadResponse)
+@router.get("/tasks/{task_id}", response_model=TaskReadResponse)
 def get_task(task_id: int, db: Session = Depends(get_db)):
     return crud.get_task(task_id, db)
 
@@ -19,6 +19,7 @@ def get_task(task_id: int, db: Session = Depends(get_db)):
 def create_task(task_body: TaskCreate, db: Session = Depends(get_db)):
     return crud.create_task(task_body, db)    
 
-@router.delete("/tasks")
-def delete_task():
-    pass
+@router.delete("/tasks/{deleted_task_id}")
+def delete_task(deleted_task_id: int, db: Session = Depends(get_db)):
+    crud.delete_task(deleted_task_id, db)
+    return {"deleted": "タスクは削除されました。"}
