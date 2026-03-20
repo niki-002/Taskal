@@ -1,0 +1,9 @@
+@charset "UTF-8";
+
+body{
+    background-color: #000;
+}
+h1 {
+    color: #fff;
+    font-family: "Klee One";
+}

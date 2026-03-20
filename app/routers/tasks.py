@@ -15,7 +15,7 @@ def list_tasks(db: Session = Depends(get_db)):
 def get_task(task_id: int, db: Session = Depends(get_db)):
     return crud.get_task(task_id, db)
 
-@router.post("/tasks", response_model=TaskCreateResponse)
+@router.post("/tasks/create_task", response_model=TaskCreateResponse)
 def create_task(task_body: TaskCreate, db: Session = Depends(get_db)):
     return crud.create_task(task_body, db)    
 
