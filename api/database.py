@@ -12,7 +12,7 @@ database_session = sessionmaker(autoflush=False,
 
 Base = declarative_base()
 
-def get_db():
+def get_database():
     try:
         yield database_session()
     finally:
