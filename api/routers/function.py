@@ -8,17 +8,17 @@ from ..schemas import TaskCreate, TaskCreateResponse, TaskReadResponse
 router = APIRouter()
 
 @router.get("/")
-def get_tasks(db: Session = Depends(get_database)):
-    return crud.get_tasks(db)
+def get_tasks(database: Session = Depends(get_database)):
+    return crud.get_tasks(database)
 
 @router.get("/{task_id}", response_model=TaskReadResponse)
-def get_task(task_id: int, db: Session = Depends(get_database)):
-    return crud.get_task(task_id, db)
+def get_task(task_id: int, database: Session = Depends(get_database)):
+    return crud.get_task(task_id, database)
 
 @router.post("/", response_model=TaskCreateResponse)
-def create_task(new_task: TaskCreate, db: Session = Depends(get_database)):
-    return crud.create_task(new_task, db)
+def create_task(new_task: TaskCreate, database: Session = Depends(get_database)):
+    return crud.create_task(new_task, database)
 
 @router.delete("/{task_id}")
-def delete_task(task_id: int, db: Session = Depends(get_database)):
-    return crud.delete_task(task_id, db)
+def delete_task(task_id: int, database: Session = Depends(get_database)):
+    return crud.delete_task(task_id, database)

@@ -3,12 +3,11 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 
 DATABASE_URL = "postgresql+psycopg2://taskal:taskalpass@localhost:5432/taskal"
 
-database_engine = create_engine(DATABASE_URL, 
-                          echo=True)
+database_engine = create_engine(DATABASE_URL)
 
 database_session = sessionmaker(autoflush=False, 
-                          autocommit=False, 
-                          bind=database_engine)
+                                autocommit=False, 
+                                bind=database_engine)
 
 Base = declarative_base()
 
