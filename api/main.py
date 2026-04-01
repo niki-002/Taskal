@@ -1,7 +1,6 @@
 from fastapi import FastAPI
-from .routers import function
-from .database import database_engine
-from .models import Task
+from routers import function
+from database import database_engine, Base
 
 app = FastAPI(title="Taskal")
 
@@ -9,4 +8,4 @@ app.include_router(function.router)
 
 @app.on_event("startup")
 def on_startup():
-    Task.metadata.create_all(bind=database_engine)
+    Base.metadata.create_all(bind=database_engine)

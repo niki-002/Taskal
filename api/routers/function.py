@@ -1,24 +1,30 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
 from database import get_database
 import crud
 from schemas import TaskCreate, TaskReadResponse
 
-router = APIRouter()
+router = APIRouter(prefix="/api/tasks")
 
-@router.get("/tasks")
+@router.get("")
 def get_tasks(database: Session = Depends(get_database)):
     return crud.get_tasks(database)
 
-@router.get("/tasks/{task_id}", response_model=TaskReadResponse)
+@router.get("/{task_id}", response_model=TaskReadResponse)
 def get_task(task_id: int, database: Session = Depends(get_database)):
-    return crud.get_task(task_id, database)
+    task = crud.get_task(task_id, database)
+    if task is None:
+        raise HTTPException(status_code=404, detail="task not found")
+    return task
 
-@router.post("/tasks")
+@router.post("")
 def create_task(new_task: TaskCreate, database: Session = Depends(get_database)):
     return crud.create_task(new_task, database)
 
-@router.delete("/tasks/{task_id}")
+@router.delete("/{task_id}")
 def delete_task(task_id: int, database: Session = Depends(get_database)):
-    return crud.delete_task(task_id, database)
+    task = crud.delete_task(task_id, database)
+    if not task:
+        raise HTTPException(status_code=404, detail="task not found")
+    return None 
