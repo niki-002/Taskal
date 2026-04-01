@@ -1,6 +1,6 @@
 .env.example
 .venv
-api/__pycache__/
-api/routers/__pycache__/
+__pycache__/
 *.pyc
 .env
+.pytest_cache
