@@ -18,7 +18,7 @@ def get_task(task_id: int, database: Session = Depends(get_database)):
         raise HTTPException(status_code=404, detail="task not found")
     return task
 
-@router.post("")
+@router.post("", status_code=201)
 def create_task(new_task: TaskCreate, database: Session = Depends(get_database)):
     return crud.create_task(new_task, database)
 
