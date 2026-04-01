@@ -1,9 +1,9 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from database import get_database
-import crud
-from schemas import TaskCreate, TaskReadResponse
+from api.database import get_database
+from api import crud
+from api.schemas import TaskCreate, TaskReadResponse
 
 router = APIRouter(prefix="/api/tasks")
 
@@ -22,7 +22,7 @@ def get_task(task_id: int, database: Session = Depends(get_database)):
 def create_task(new_task: TaskCreate, database: Session = Depends(get_database)):
     return crud.create_task(new_task, database)
 
-@router.delete("/{task_id}")
+@router.delete("/{task_id}", status_code=204)
 def delete_task(task_id: int, database: Session = Depends(get_database)):
     task = crud.delete_task(task_id, database)
     if not task:

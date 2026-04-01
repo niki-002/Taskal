@@ -1,6 +1,6 @@
 from fastapi import FastAPI
-from routers import function
-from database import database_engine, Base
+from api.routers import function
+from api.database import database_engine, Base
 
 app = FastAPI(title="Taskal")
 

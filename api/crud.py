@@ -1,8 +1,8 @@
 from fastapi import HTTPException
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from .models import Task
-from .schemas import TaskCreate
+from api.models import Task
+from api.schemas import TaskCreate
 
 def get_tasks(database: Session) -> list[Task]:
     return list(database.scalars(select(Task)).all())
