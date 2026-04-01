@@ -12,8 +12,9 @@ database_session = sessionmaker(autoflush=False,
 Base = declarative_base()
 
 def get_database():
+    database = database_session()
     try:
-        yield database_session()
+        yield database
     finally:
-        database_session().close()
+        database.close()
 # db_sessionが1リクエスト中のDB操作単位

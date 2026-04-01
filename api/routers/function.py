@@ -1,9 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from ..database import get_database
 from .. import crud
-from ..schemas import TaskCreate, TaskCreateResponse, TaskReadResponse
+from ..schemas import TaskCreate, TaskReadResponse
 
 router = APIRouter()
 
