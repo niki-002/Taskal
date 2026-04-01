@@ -5,7 +5,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from api.database import Base, get_database
+from api.database import get_database
+from api.models import Task
 from api.main import app
 
 # テストデータベースの接続先が設定されてないときに強制停止する安全装置。
@@ -15,3 +16,57 @@ if not TEST_DATABASE_URL:
 
 # pytest fixture の設計
 # テストの前後処理を関数化して使いまわす仕組み
+
+# scope="session"⇒pytest実行中に1回だけ動く
+@pytest.fixture(scope="session")
+def test_engine():
+    test_database_engine = create_engine(TEST_DATABASE_URL,
+                                         echo=True)
+    # テスト開始時にテーブルを作り直す
+    Task.metadata.drop_all(bind=test_database_engine)
+    Task.metadata.create_all(bind=test_database_engine)
+    yield test_database_engine
+    Task.metadata.drop_all(bind=test_database_engine)
+
+# test_engine fixtureのengineを受け取ってそこに紐づくセッションファクトリを作る⇒テスト中にセッションが切れる
+@pytest.fixture()
+def test_session(test_engine):
+    test_database_session = sessionmaker(autoflush=False,
+                                         autocommit=False,
+                                         bind=test_engine)
+    
+    def test_get_database():
+        try:
+            yield test_database_session()
+        finally:
+            test_database_session().close()
+
+    # FastAPIのDepends(get_db)を全部置き換える
+    app.dependency_overrides[get_database] = test_get_database
+    with TestClient(app) as test_client:
+        yield test_client
+    app.dependency_overrides.clear()
+
+def test_crud(test_session: TestClient):
+    # Create
+    response = test_session.post("/", json={"title": "test"})
+    assert response.status_code == 201
+    task = response.json()
+    task_id = task["id"]
+    assert task["title"] == "test"
+    assert task["done_flag"] is "False"
+    
+    # Read(一覧)
+    response = test_session.get("/")
+    assert response.status_code == 200
+    assert len(response.json()) >= 1
+
+    # Read(個別)
+    response = test_session.get("/{task_id}")
+    assert response.status_code == 200
+    task = response.json()
+    assert task["title"] == "test"
+
+    # delete
+    response = test_session.delete("/{task_id}")
+    assert response.status_code == 204
