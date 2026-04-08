@@ -1,124 +1,131 @@
 const apiBase = "/api/tasks";
 
-function escapeHtml(s) {
-  return (s ?? "")
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
+// データ取得
+async function getTasks() {
+  try {
+    const response = await fetch(apiBase);
+    if (!response.ok) {
+      throw new Error("Failed to get tasks");
+    }
+    const result = await response.json();
+    console.log(result);
+  } catch(error) {
+    console.log(error.message);
+  }  
 }
 
-async function fetchTasks() {
-  const res = await fetch(apiBase);
-  if (!res.ok) throw new Error("Failed to load tasks");
-  return await res.json();
-}
-
+// データ登録API
 async function createTask(payload) {
-  const res = await fetch(apiBase, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error("Failed to create task");
-  return await res.json();
+  try {
+    const response = await fetch(apiBase, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!response.ok) {
+      throw new Error("Failed to create task");
+    }
+    const reslut = response.json(); 
+    console.log(reslut);
+  } catch(error) {
+    console.log(error.message);
+  } 
 }
 
-async function updateTask(id, payload) {
-  const res = await fetch(`${apiBase}/${id}`, {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error("Failed to update task");
-  return await res.json();
-}
-
+// データ削除API 
 async function deleteTask(id) {
-  const res = await fetch(`${apiBase}/${id}`, { method: "DELETE" });
-  if (!res.ok) throw new Error("Failed to delete task");
+  try {
+    const response = await fetch(`${apiBase}/${id}`,
+      {"method": "delete"}
+    );
+    if (!response.ok) {
+      throw new Error("Failed to delete task");
+    }
+    const reslut = response.json();
+    console.log(reslut);
+  } catch(error) {
+    console.log(error.message);
+  }
 }
 
+// 画面描画関数
 function renderTasks(tasks) {
-  const list = document.getElementById("taskList");
+  const list = document.getElementById("task_list");
   list.innerHTML = "";
 
-  for (const t of tasks) {
+  for (const task of tasks) {
     const li = document.createElement("li");
     li.className = "item";
 
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
-    checkbox.checked = t.is_done;
+    checkbox.checked = task.is_done;
+    // チェック入れたときの挙動
+    // checkbox.addEventListener("change", async () => {
+    //   try {
+    //     await updateTask(t.id, {
+    //       title: t.title,
+    //       description: t.description,
+    //       due_date: t.due_date,
+    //       is_done: checkbox.checked,
+    //     });
+    //     await reload();
+    //   } catch (e) {
+    //     alert(e.message);
+    //     checkbox.checked = !checkbox.checked;
+    //   }
+    // });
 
-    checkbox.addEventListener("change", async () => {
-      try {
-        await updateTask(t.id, {
-          title: t.title,
-          description: t.description,
-          due_date: t.due_date,
-          is_done: checkbox.checked,
-        });
-        await reload();
-      } catch (e) {
-        alert(e.message);
-        checkbox.checked = !checkbox.checked;
-      }
-    });
-
+    // title, description, due_date はユーザー入力から来る可能性あり。もしそのまま innerHTML に入れると、悪意あるHTMLやScriptが混ざった場合に危険
     const content = document.createElement("div");
     const title = t.is_done ? `✅ ${escapeHtml(t.title)}` : escapeHtml(t.title);
-    const desc = t.description ? `<div>${escapeHtml(t.description)}</div>` : "";
-    const due = t.due_date ? `期限: ${escapeHtml(t.due_date)}` : "期限: -";
+    // const desc = t.description ? `<div>${escapeHtml(t.description)}</div>` : "";
+    // const due = t.due_date ? `期限: ${escapeHtml(t.due_date)}` : "期限: -";
     content.innerHTML = `
       <div><strong>${title}</strong></div>
-      ${desc}
-      <div class="meta">${due}</div>
     `;
 
-    const delBtn = document.createElement("button");
-    delBtn.className = "secondary";
-    delBtn.textContent = "削除";
-    delBtn.addEventListener("click", async () => {
+    const delete_button = document.createElement("button");
+    delete_button.className = "secondary";
+    delete_button.textContent = "削除";
+    delete_button.addEventListener("click", async () => {
       if (!confirm("削除しますか？")) return;
       try {
-        await deleteTask(t.id);
+        await deleteTask(task.id);
         await reload();
-      } catch (e) {
-        alert(e.message);
+      } catch (error) {
+        alert(error.message);
       }
     });
 
     li.appendChild(checkbox);
     li.appendChild(content);
-    li.appendChild(delBtn);
+    li.appendChild(delete_button);
     list.appendChild(li);
   }
 }
 
+// 再読み込み関数
 async function reload() {
-  const tasks = await fetchTasks();
+  const tasks = await getTasks();
   renderTasks(tasks);
 }
 
-document.getElementById("reloadBtn").addEventListener("click", reload);
-
+// 新規登録処理
 document.getElementById("createForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const title = document.getElementById("title").value.trim();
-  const description = document.getElementById("description").value.trim() || null;
-  const due_date = document.getElementById("dueDate").value || null;
 
   try {
-    await createTask({ title, description, due_date });
+    await createTask({ title });
     document.getElementById("title").value = "";
-    document.getElementById("description").value = "";
-    document.getElementById("dueDate").value = "";
     await reload();
-  } catch (err) {
-    alert(err.message);
+  } catch (error) {
+    alert(error.message);
   }
 });
 
 reload();
+
+// 再読み込みボタン処理
+document.getElementById("reload_button").addEventListener("click", reload);
