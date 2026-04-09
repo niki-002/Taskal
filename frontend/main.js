@@ -10,7 +10,7 @@ async function getTasks() {
     const result = await response.json();
     return result;
   } catch(error) {
-    console.log(error.message);
+    alert(error.message);
   }  
 }
 
@@ -28,7 +28,7 @@ async function createTask(payload) {
     const reslut = response.json(); 
     return reslut;
   } catch(error) {
-    console.log(error.message);
+    alert(error.message);
   } 
 }
 
@@ -43,7 +43,7 @@ async function deleteTask(id) {
     }
     return;
   } catch(error) {
-    console.log(error.message);
+    alert(error.message);
   }
 }
 
@@ -59,30 +59,14 @@ function renderTasks(tasks) {
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
     checkbox.checked = task.done_flag;
-    // チェック入れたときの挙動
-    // checkbox.addEventListener("change", async () => {
-    //   try {
-    //     await updateTask(task.id, {
-    //       title: task.title,
-    //       description: task.description,
-    //       due_date: task.due_date,
-    //       done_flag: checkbox.checked,
-    //     });
-    //     await reload();
-    //   } catch (error) {
-    //     alert(eroor.message);
-    //     checkbox.checked = !checkbox.checked;
-    //   }
-    // });
 
     // title, description, due_date はユーザー入力から来る可能性あり。もしそのまま innerHTML に入れると、悪意あるHTMLやScriptが混ざった場合に危険
     const content = document.createElement("div");
-    const title = t.is_done ? `✅ ${escapeHtml(t.title)}` : escapeHtml(t.title);
-    // const desc = t.description ? `<div>${escapeHtml(t.description)}</div>` : "";
-    // const due = t.due_date ? `期限: ${escapeHtml(t.due_date)}` : "期限: -";
-    content.innerHTML = `
-      <div><strong>${title}</strong></div>
-    `;
+    const title = document.createElement("div")
+    const strong = document.createElement("strong")
+    strong.textContent = task.done_flag ? `✅ ${task.title}` : task.title;
+    title.appendChild(strong)
+    content.appendChild(title)
 
     const delete_button = document.createElement("button");
     delete_button.className = "secondary";
