@@ -1,15 +1,8 @@
-<<<<<<< HEAD
-from sqlalchemy import Column, Integer, String, Boolean
-from sqlalchemy.orm import declarative_base
-
-class Base(declarative_base):
-=======
 from sqlalchemy import String
 from sqlalchemy.orm import Mapped, mapped_column, DeclarativeBase
 
 # ORMモデルの親クラス
 class Base(DeclarativeBase):
->>>>>>> 883a560 (ver4.0 モデル定義変更)
     pass
 
 class Task(Base):
