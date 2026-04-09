@@ -8,7 +8,7 @@ async function getTasks() {
       throw new Error("Failed to get tasks");
     }
     const result = await response.json();
-    console.log(result);
+    return result;
   } catch(error) {
     console.log(error.message);
   }  
@@ -26,7 +26,7 @@ async function createTask(payload) {
       throw new Error("Failed to create task");
     }
     const reslut = response.json(); 
-    console.log(reslut);
+    return reslut;
   } catch(error) {
     console.log(error.message);
   } 
@@ -36,13 +36,12 @@ async function createTask(payload) {
 async function deleteTask(id) {
   try {
     const response = await fetch(`${apiBase}/${id}`,
-      {"method": "delete"}
+      {"method": "DELETE"}
     );
     if (!response.ok) {
       throw new Error("Failed to delete task");
     }
-    const reslut = response.json();
-    console.log(reslut);
+    return;
   } catch(error) {
     console.log(error.message);
   }
@@ -59,19 +58,19 @@ function renderTasks(tasks) {
 
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
-    checkbox.checked = task.is_done;
+    checkbox.checked = task.done_flag;
     // チェック入れたときの挙動
     // checkbox.addEventListener("change", async () => {
     //   try {
-    //     await updateTask(t.id, {
-    //       title: t.title,
-    //       description: t.description,
-    //       due_date: t.due_date,
-    //       is_done: checkbox.checked,
+    //     await updateTask(task.id, {
+    //       title: task.title,
+    //       description: task.description,
+    //       due_date: task.due_date,
+    //       done_flag: checkbox.checked,
     //     });
     //     await reload();
-    //   } catch (e) {
-    //     alert(e.message);
+    //   } catch (error) {
+    //     alert(eroor.message);
     //     checkbox.checked = !checkbox.checked;
     //   }
     // });
