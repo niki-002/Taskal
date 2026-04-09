@@ -7,9 +7,6 @@ from api.schemas import TaskCreate
 def get_tasks(database: Session) -> list[Task]:
     return list(database.scalars(select(Task)).all())
 
-def get_task(task_id: int, database: Session) -> Task | None:
-    return database.scalar(select(Task).where(Task.id == task_id))
-
 def create_task(new_task: TaskCreate, database: Session) -> Task:
     task = Task(
         title = new_task.title,

@@ -8,7 +8,7 @@ async function getTasks() {
       throw new Error("Failed to get tasks");
     }
     const result = await response.json();
-    return result;
+    return result; 
   } catch(error) {
     alert(error.message);
   }  

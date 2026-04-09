@@ -8,10 +8,5 @@ class TaskBase(BaseModel):
 class TaskCreate(TaskBase):
     pass
 
-# レスポンススキーマ
-class TaskReadResponse(TaskBase):
-    id: int
-    done_flag: bool = Field(False, description="完了フラグ")
-
     class Config:
         orm_mode = True
