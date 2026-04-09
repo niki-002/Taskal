@@ -15,10 +15,7 @@ database_session = sessionmaker(autoflush=False,
                                 autocommit=False, 
                                 bind=database_engine)
 
-<<<<<<< HEAD
-=======
-# fastapi依存注入の関数
->>>>>>> 41356ec (ver4.0 ORMモデルの親クラス定義変更)
+# FastAPI依存注入の関数
 def get_database():
     database = database_session()
     try:
