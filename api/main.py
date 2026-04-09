@@ -4,14 +4,15 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from api.routers import function
-from api.database import database_engine, Base
+from api.database import database_engine
+from api.models import Base
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-frontend_DIR = BASE_DIR / "frontend"
+BASE_DIR = Path(__file__).resolve().parent.parent # mainの親の親=Taskalディレクトリを基準とする
+FRONTEND_DIR = BASE_DIR / "frontend"
 
 app = FastAPI(title="Taskal")
 
-app.mount("/frontend", StaticFiles(directory=str(frontend_DIR)), name="frontend")
+app.mount("/frontend", StaticFiles(directory=str(FRONTEND_DIR)), name="frontend") # 静的ファイル配信
 
 app.include_router(function.router)
 
@@ -29,4 +30,4 @@ def on_startup():
 
 @app.get("/")
 def root():
-    return FileResponse(str(frontend_DIR / "index.html"))
+    return FileResponse(str(FRONTEND_DIR / "index.html"))
