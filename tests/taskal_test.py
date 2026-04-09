@@ -12,7 +12,8 @@ if not TEST_DATABASE_URL:
 
 os.environ["DATABASE_URL"] = TEST_DATABASE_URL
 
-from api.database import get_database, Base
+from api.database import get_database
+from api.models import Base
 from api.main import app
 
 # pytest fixture の設計
