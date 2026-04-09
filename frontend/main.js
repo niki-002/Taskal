@@ -25,7 +25,7 @@ async function createTask(payload) {
     if (!response.ok) {
       throw new Error("Failed to create task");
     }
-    const reslut = response.json(); 
+    const reslut = await response.json(); 
     return reslut;
   } catch(error) {
     alert(error.message);
