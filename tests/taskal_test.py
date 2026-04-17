@@ -52,11 +52,17 @@ def test_session(test_engine):
 
 def test_crud(test_session: TestClient):
     # Create
-    response = test_session.post("/api/tasks", json={"title": "test"})
+    response = test_session.post("/api/tasks", json={
+        "title": "test",
+        "description": "This is first test.",
+        "limit": "2024-01-01"
+        })
     assert response.status_code == 201
     task = response.json()
     task_id = task["id"]
     assert task["title"] == "test"
+    assert task["description"] == "This is first test."
+    assert task["limit"] == "2024-01-01"
     assert task["done_flag"] is False
     
     # Read(一覧)
@@ -70,6 +76,18 @@ def test_crud(test_session: TestClient):
     assert response.status_code == 200
     task = response.json()
     assert task["title"] == "test"
+
+    # Update
+    response = test_session.put(f"api/tasks/{task_id}", json={
+        "title": "test2",
+        "description": "This is second test.",
+        "limit": "2025-01-01",
+        })
+    assert response.status_code == 200
+    task = response.json()
+    assert task["title"] == "test2"
+    assert task["description"] == "This is second test."
+    assert task["limit"] == "2025-01-01"
 
     # delete
     response = test_session.delete(f"/api/tasks/{task_id}")
