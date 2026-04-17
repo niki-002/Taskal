@@ -1,3 +1,4 @@
+# アプリ起動周りの設定
 from pathlib import Path
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles

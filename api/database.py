@@ -1,3 +1,4 @@
+# データベース取得&セッション作成
 import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
