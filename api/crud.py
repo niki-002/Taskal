@@ -30,7 +30,6 @@ def update_task(task_id: int, new_data: schemas.TaskUpdate, database: Session) -
         description = new_data.description,
         limit = new_data.limit
     )
-    database.add(task)
     database.commit()
     database.refresh(task)
     return task
