@@ -2,30 +2,30 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from api.database import get_database
+from api.db import get_db
 from api import crud
-from api import schemas
+from api.schemas import task
 
 router = APIRouter(prefix="/api/tasks")
 
 @router.get("")
-def get_tasks(database: Session = Depends(get_database)):
+def get_tasks(database: Session = Depends(get_db)):
     return crud.get_tasks(database)
 
 @router.get("/{task_id}")
-def get_task(task_id: int, database: Session = Depends(get_database)):
+def get_task(task_id: int, database: Session = Depends(get_db)):
     return crud.get_task(task_id, database)
 
 @router.post("", status_code=201)
-def create_task(new_task: schemas.TaskCreate, database: Session = Depends(get_database)):
+def create_task(new_task: task.TaskCreate, database: Session = Depends(get_db)):
     return crud.create_task(new_task, database)
 
 @router.put("/{task_id}")
-def update_task(task_id: int, new_data: schemas.TaskUpdate, database: Session = Depends(get_database)):
+def update_task(task_id: int, new_data: task.TaskUpdate, database: Session = Depends(get_db)):
     return crud.update_task(task_id, new_data, database)
 
 @router.delete("/{task_id}", status_code=204)
-def delete_task(task_id: int, database: Session = Depends(get_database)):
+def delete_task(task_id: int, database: Session = Depends(get_db)):
     task = crud.delete_task(task_id, database)
     if not task:
         raise HTTPException(status_code=404, detail="task not found.")

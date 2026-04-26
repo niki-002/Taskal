@@ -5,7 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 from api.routers import function
-from api.database import database_engine
+from api.db import db_engine
 from api.models import Base
 
 BASE_DIR = Path(__file__).resolve().parent.parent # mainの親の親=Taskalディレクトリを基準とする
@@ -27,7 +27,7 @@ app.add_middleware(
 
 @app.on_event("startup")
 def on_startup():
-    Base.metadata.create_all(bind=database_engine)
+    Base.metadata.create_all(bind=db_engine)
 
 @app.get("/")
 def root():

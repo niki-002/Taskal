@@ -1,10 +1,10 @@
 # データベース操作
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from api.models import Task
-from api import schemas
+from api.models.task import Task
+from api.schemas import task
 
-def create_task(new_task: schemas.TaskCreate, database: Session) -> schemas.CreatedTask:
+def create_task(new_task: task.TaskCreate, database: Session) -> task.CreatedTask:
     task = Task(
         title = new_task.title,
         description = new_task.description,
@@ -16,14 +16,14 @@ def create_task(new_task: schemas.TaskCreate, database: Session) -> schemas.Crea
     database.refresh(task)
     return task
 
-def get_tasks(database: Session) -> list[schemas.ReadTaskList]:
+def get_tasks(database: Session) -> list[task.ReadTaskList]:
     return list(database.scalars(select(Task)).all())
 
-def get_task(task_id: int, database: Session) -> schemas.ReadTask:
+def get_task(task_id: int, database: Session) -> task.ReadTask:
     task = database.scalar(select(Task).where(Task.id == task_id))
     return task
 
-def update_task(task_id: int, new_data: schemas.TaskUpdate, database: Session) -> schemas.UpdatedTask:
+def update_task(task_id: int, new_data: task.TaskUpdate, database: Session) -> task.UpdatedTask:
     task = database.scalar(select(Task).where(Task.id == task_id))
     task = Task(
         title = new_data.title,
@@ -34,7 +34,7 @@ def update_task(task_id: int, new_data: schemas.TaskUpdate, database: Session) -
     database.refresh(task)
     return task
 
-def delete_task(deleted_task_id: int, database: Session) -> schemas.DeletedTask:
+def delete_task(deleted_task_id: int, database: Session) -> task.DeletedTask:
     deleted_task = database.scalar(select(Task).where(Task.id == deleted_task_id))
     if deleted_task is None:
         return False
