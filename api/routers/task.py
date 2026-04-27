@@ -6,6 +6,7 @@ from api.db import get_db
 from api.services import task_service
 from api.schemas import task
 from api.models.auth import User
+from api.services.auth_service import get_current_user
 
 
 router = APIRouter(prefix="/api/tasks")
@@ -13,6 +14,7 @@ router = APIRouter(prefix="/api/tasks")
 
 @router.get(
         "",
+        status_code=200,
         response_model=list[task.TaskResponse]
     )
 def get_tasks(
@@ -24,6 +26,7 @@ def get_tasks(
 
 @router.get(
         "/{task_id}",
+        status_code=200,
         response_model=task.TaskResponse
     )
 def get_task(
@@ -63,6 +66,7 @@ def create_task(
 
 @router.patch(
         "/{task_id}",
+        status_code=200,
         response_model=task.TaskResponse
     )
 def update_task(
