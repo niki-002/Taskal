@@ -15,10 +15,10 @@ class Task(Base):
         index=True,
         nullable=False
         )
-    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"))  # ForeignKeyは引数に定められたカラムに存在する値だけを入れられるようにするための要素
     description: Mapped[str] = mapped_column(String(1000))
     limit: Mapped[date] = mapped_column() 
     done_flag: Mapped[bool] = mapped_column(
         nullable=False,
         default=False
         )
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"))  # ForeignKeyは引数に定められたカラムに存在する値だけを入れられるよう指定する役割を持つ。

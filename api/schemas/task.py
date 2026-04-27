@@ -3,10 +3,16 @@ from datetime import date
 
 # ベーススキーマ
 class TaskBase(BaseModel):
-    title: str = Field(..., min_length=1, max_length=200, example="書類チェック")
+    title: str = Field(
+        ...,
+        min_length=1,
+        max_length=200,
+        example="書類チェック"
+        )
 
-class Task(BaseModel):
+class Task(TaskBase):
     id: int
+    owner_id: int
     description: str = Field(max_length=1000, example="赤字を中心に見る。")
     limit: date
     done_flag: bool
@@ -20,18 +26,9 @@ class TaskUpdate(TaskCreate):
     pass
 
 # レスポンススキーマ
-class CreatedTask(Task):
-    pass    
-
-class ReadTaskList(Task):
+class TaskResponse(Task):
     pass
 
-class ReadTask(Task):
-    pass
-
-class UpdatedTask(Task):
-    pass
-
-class DeletedTask():
+class TaskDeleteResponse():
     None
     

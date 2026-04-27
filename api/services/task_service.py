@@ -1,43 +1,108 @@
-# データベース操作
+# アプリの処理 & データベース操作
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 from api.models.task import Task
+from api.models.auth import User
 from api.schemas import task
 
-def create_task(new_task: task.TaskCreate, database: Session) -> task.CreatedTask:
+
+def get_tasks(
+        db: Session,
+        current_user: User
+) -> list[task.TaskResponse]:
+    
+    owner_id = current_user.id
+    tasks = list(
+        db.scalars(
+            select(Task)
+            .where(Task.owner_id == owner_id)
+        )
+    )
+    return tasks
+
+
+def get_task(
+        task_id: int,
+        db: Session,
+        current_user: User
+) -> task.TaskResponse | None:
+    
+    owner_id = current_user.id
+    task = db.scalar(
+        select(Task)
+        .where(
+            Task.id == task_id,
+            Task.owner_id == owner_id
+        )
+    )
+    if task is None:
+        return None
+    return task
+
+
+def create_task(
+        new_task: task.TaskCreate,
+        db: Session,
+        current_user: User
+) -> task.TaskResponse:
+    
     task = Task(
         title = new_task.title,
         description = new_task.description,
         limit = new_task.limit,
-        done_flag = False
+        done_flag = False,
+        owner_id = current_user.id
     )
-    database.add(task)
-    database.commit()
-    database.refresh(task)
+    db.add(task)
+    db.commit()
+    db.refresh(task)
     return task
 
-def get_tasks(database: Session) -> list[task.ReadTaskList]:
-    return list(database.scalars(select(Task)).all())
 
-def get_task(task_id: int, database: Session) -> task.ReadTask:
-    task = database.scalar(select(Task).where(Task.id == task_id))
-    return task
+def update_task(
+        task_id: int,
+        new_data: task.TaskUpdate,
+        db: Session,
+        current_user: User
+) -> task.TaskResponse | None:
 
-def update_task(task_id: int, new_data: task.TaskUpdate, database: Session) -> task.UpdatedTask:
-    task = database.scalar(select(Task).where(Task.id == task_id))
+    owner_id = current_user.id
+    task = db.scalar(
+        select(Task)
+        .where(
+            Task.id == task_id,
+            Task.owner_id == owner_id
+        )
+    )
+    if task is None:
+        return None
+    
     task = Task(
         title = new_data.title,
         description = new_data.description,
         limit = new_data.limit
     )
-    database.commit()
-    database.refresh(task)
+    db.commit()
+    db.refresh(task)
     return task
 
-def delete_task(deleted_task_id: int, database: Session) -> task.DeletedTask:
-    deleted_task = database.scalar(select(Task).where(Task.id == deleted_task_id))
+
+def delete_task(
+        deleted_task_id: int,
+        db: Session,
+        current_user: User
+) -> bool:
+
+    owner_id = current_user.id
+    deleted_task = db.scalar(
+        select(Task)
+        .where(
+            Task.id == deleted_task_id,
+            Task.owner_id == owner_id
+        )
+    )
     if deleted_task is None:
         return False
-    database.delete(deleted_task)
-    database.commit()
+    db.delete(deleted_task)
+    db.commit()
     return True
