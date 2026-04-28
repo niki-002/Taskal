@@ -7,7 +7,7 @@ from api.db import get_db
 from api.services import task_service
 from api.schemas import task
 from api.models.auth import User
-from api.services.auth_service import get_current_user
+from api.services.auth_service import get_current_active_user
 
 
 router = APIRouter(prefix="/api/tasks")
@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api/tasks")
 )
 def get_tasks(
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)]
+    current_user: Annotated[User, Depends(get_current_active_user)]
 ):
     return task_service.get_tasks(db, current_user)
 
@@ -33,7 +33,7 @@ def get_tasks(
 def get_task(
     task_id: int,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)]
+    current_user: Annotated[User, Depends(get_current_active_user)]
 ):
     task =  task_service.get_task(
         task_id,
@@ -56,7 +56,7 @@ def get_task(
 def create_task(
     new_task: task.TaskCreate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)]
+    current_user: Annotated[User, Depends(get_current_active_user)]
 ):
     return task_service.create_task(
         new_task,
@@ -74,7 +74,7 @@ def update_task(
     task_id: int,
     new_data: task.TaskUpdate,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)]
+    current_user: Annotated[User, Depends(get_current_active_user)]
 ):
     task = task_service.update_task(
         task_id,
@@ -93,15 +93,14 @@ def update_task(
 @router.delete(
     "/{task_id}",
     status_code=204,
-    response_model=task.TaskDeleteResponse
 )
 def delete_task(
-    deleted_task_id: int,
+    task_id: int,
     db: Annotated[Session, Depends(get_db)],
-    current_user: Annotated[User, Depends(get_current_user)]
+    current_user: Annotated[User, Depends(get_current_active_user)]
 ):
     task = task_service.delete_task(
-        deleted_task_id,
+        task_id,
         db,
         current_user
     )

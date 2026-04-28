@@ -1,10 +1,10 @@
 # データベース取得&セッション作成
-import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from .core.config import settings
 
 # 環境変数からデータベースのURLを取得
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = settings.database_url
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL is not set.")
 

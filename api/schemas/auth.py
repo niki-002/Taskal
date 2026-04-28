@@ -5,21 +5,28 @@ from pydantic import BaseModel, Field, EmailStr
 class UserBase(BaseModel):
     username: str = Field(..., min_length=1, examples="World")
     email: EmailStr = Field(...)
-
-
-class UserCreate(UserBase):
-    password: str = Field(..., min_length=8)
-
-
-class UserRead(UserBase):
-    hashed_password: str = Field(...)
     
+
+class UserRegistResponse(UserBase):
+    id: int
+    hashed_password: str = Field(...)
+
+    
+class UserReadById(UserBase):
+    id: int
+    hashed_password: str = Field(...)
+    disabled: bool | None
+
+
+class UserAuthenticate(UserReadById):
+    pass
+
 
 # Token(=レスポンススキーマ)
 class Token(BaseModel):
     access_token: str
-    token_tyoe: str
+    token_type: str
 
 
 class TokenData(BaseModel):
-    username: str | None = Field(default=None)
+    email: EmailStr | None = Field(default=None)
