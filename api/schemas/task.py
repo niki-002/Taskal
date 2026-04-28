@@ -10,24 +10,25 @@ class TaskBase(BaseModel):
         example="書類チェック"
         )
 
-class Task(TaskBase):
-    id: int
-    owner_id: int
-    description: str = Field(max_length=1000, example="赤字を中心に見る。")
-    limit: date
-    done_flag: bool
 
 # リクエストスキーマ
 class TaskCreate(TaskBase):
     description: str = Field(max_length=1000, example="赤字を中心に見る。")
     limit: date
 
+
 class TaskUpdate(TaskCreate):
     pass
 
+
 # レスポンススキーマ
-class TaskResponse(Task):
-    pass
+class TaskResponse(TaskBase):
+    id: int
+    owner_id: int
+    description: str = Field(max_length=1000, example="赤字を中心に見る。")
+    limit: date
+    done_flag: bool
+
 
 class TaskDeleteResponse():
     None

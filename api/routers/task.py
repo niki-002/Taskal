@@ -1,6 +1,7 @@
 # APIのURL定義
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from typing import Annotated
 
 from api.db import get_db
 from api.services import task_service
@@ -18,8 +19,8 @@ router = APIRouter(prefix="/api/tasks")
         response_model=list[task.TaskResponse]
     )
 def get_tasks(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)]
 ):
     return task_service.get_tasks(db, current_user)
 
@@ -31,8 +32,8 @@ def get_tasks(
     )
 def get_task(
     task_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)]
 ):
     task =  task_service.get_task(
         task_id,
@@ -54,8 +55,8 @@ def get_task(
     )
 def create_task(
     new_task: task.TaskCreate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)]
 ):
     return task_service.create_task(
         new_task,
@@ -72,8 +73,8 @@ def create_task(
 def update_task(
     task_id: int,
     new_data: task.TaskUpdate,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)]
 ):
     task = task_service.update_task(
         task_id,
@@ -96,8 +97,8 @@ def update_task(
     )
 def delete_task(
     deleted_task_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    db: Annotated[Session, Depends(get_db)],
+    current_user: Annotated[User, Depends(get_current_user)]
 ):
     task = task_service.delete_task(
         deleted_task_id,

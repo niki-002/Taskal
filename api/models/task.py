@@ -10,6 +10,7 @@ class Task(Base):
     __tablename__ = "tasks"
 
     id: Mapped[int] = mapped_column(primary_key=True)
+    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"))  # ForeignKeyは引数に定められたカラムに存在する値だけを入れられるよう指定する役割を持つ。
     title: Mapped[str] = mapped_column(
         String(200),
         index=True,
@@ -21,4 +22,3 @@ class Task(Base):
         nullable=False,
         default=False
         )
-    owner_id: Mapped[int] = mapped_column(ForeignKey("users.id"))  # ForeignKeyは引数に定められたカラムに存在する値だけを入れられるよう指定する役割を持つ。

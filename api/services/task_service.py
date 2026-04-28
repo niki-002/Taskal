@@ -59,6 +59,34 @@ def create_task(
     return task
 
 
+def update_done_flag(
+        task_id: int,
+        db: Session,
+        current_user: User
+) -> task.TaskResponse | None:
+    
+    owner_id = current_user.id
+    task = db.scalar(
+        select(Task)
+        .where(
+            Task.id == task_id,
+            Task.owner_id == owner_id
+        )
+    )
+    if task is None:
+        return None
+    
+    if task.done_flag is False:
+        task.done_flag = True
+        db.commit()
+        db.refresh(task)
+    else:
+        task.done_flag = False
+        db.commit()
+        db.refresh(task) 
+    return task
+
+
 def update_task(
         task_id: int,
         new_data: task.TaskUpdate,
