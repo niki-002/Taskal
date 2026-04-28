@@ -14,10 +14,10 @@ router = APIRouter(prefix="/api/tasks")
 
 
 @router.get(
-        "",
-        status_code=200,
-        response_model=list[task.TaskResponse]
-    )
+    "",
+    status_code=200,
+    response_model=list[task.TaskResponse]
+)
 def get_tasks(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)]
@@ -26,10 +26,10 @@ def get_tasks(
 
 
 @router.get(
-        "/{task_id}",
-        status_code=200,
-        response_model=task.TaskResponse
-    )
+    "/{task_id}",
+    status_code=200,
+    response_model=task.TaskResponse
+)
 def get_task(
     task_id: int,
     db: Annotated[Session, Depends(get_db)],
@@ -49,10 +49,10 @@ def get_task(
 
 
 @router.post(
-        "",
-        status_code=201,
-        response_model=task.TaskResponse
-    )
+    "",
+    status_code=201,
+    response_model=task.TaskResponse
+)
 def create_task(
     new_task: task.TaskCreate,
     db: Annotated[Session, Depends(get_db)],
@@ -66,10 +66,10 @@ def create_task(
 
 
 @router.patch(
-        "/{task_id}",
-        status_code=200,
-        response_model=task.TaskResponse
-    )
+    "/{task_id}",
+    status_code=200,
+    response_model=task.TaskResponse
+)
 def update_task(
     task_id: int,
     new_data: task.TaskUpdate,
@@ -91,10 +91,10 @@ def update_task(
 
 
 @router.delete(
-        "/{task_id}",
-        status_code=204,
-        response_model=task.TaskDeleteResponse
-    )
+    "/{task_id}",
+    status_code=204,
+    response_model=task.TaskDeleteResponse
+)
 def delete_task(
     deleted_task_id: int,
     db: Annotated[Session, Depends(get_db)],
