@@ -4,6 +4,7 @@ from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+
 from .routers import task, auth
 from .db import db_engine
 from .models.Base import Base
@@ -24,9 +25,13 @@ app.mount(
 app.include_router(task.router)
 app.include_router(auth.router)
 
+origins = [
+    "http://127.0.0.1:8000/"
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
