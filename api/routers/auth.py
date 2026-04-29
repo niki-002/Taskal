@@ -6,8 +6,7 @@ from typing import Annotated
 from datetime import timedelta
 
 from api.schemas.auth import Token, UserRegistResponse, UserAuthenticate
-from api.services.auth_service import authenticate_user, create_access_token, get_current_active_user, regist_user
-from api.models.auth import User
+from api.services import auth_service
 from api.db import get_db
 from ..core.config import Settings
 
@@ -26,7 +25,7 @@ async def regist_user(
 ):
     email = regist_data.username
     password = regist_data.password
-    new_user = regist_user(
+    new_user = auth_service.regist_user(
         email,
         password,
         db
@@ -44,7 +43,7 @@ async def get_token(
 ):
     email = form_data.username
     password = form_data.password
-    user = authenticate_user(
+    user = auth_service.authenticate_user(
         email,
         password,
         db
@@ -56,7 +55,7 @@ async def get_token(
             headers={"WWW-Authenticate": "Bearer"}
         )
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
-    access_token = create_access_token(
+    access_token = auth_service.create_access_token(
         data={
             "sub": user.email,
             "exp": None
@@ -71,6 +70,6 @@ async def get_token(
 
 @router.get("/users/me", response_model=UserAuthenticate)
 async def read_users_me(
-    current_user: Annotated[User, Depends(get_current_active_user)]
+    current_user: Annotated[UserAuthenticate, Depends(auth_service.get_current_active_user)]
 ):
     return current_user

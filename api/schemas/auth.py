@@ -3,13 +3,17 @@ from pydantic import BaseModel, Field, EmailStr
 
 # 新規登録・ログインベーススキーマ
 class UserBase(BaseModel):
-    username: str = Field(..., min_length=1, examples="World")
+    username: str = Field(
+        ...,
+        min_length=1,
+        example="World",
+        pattern=r"^[a-zA-Z0-9_-]" # ユーザ名に使える文字の指定
+    )
     email: EmailStr = Field(...)
     
 
 class UserRegistResponse(UserBase):
     id: int
-    hashed_password: str = Field(...)
 
     
 class UserReadById(UserBase):

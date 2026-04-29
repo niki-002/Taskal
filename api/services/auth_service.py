@@ -1,4 +1,4 @@
-import jwt
+import jwt, secrets, string
 from fastapi import HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
 from jwt.exceptions import InvalidTokenError
@@ -39,8 +39,10 @@ def get_password_hash(password: str) -> str:
     return password_hash.hash(password)
 
 
-def get_defalt_username_by_email(email: str) -> str:
-    return email.split("@")[0]
+def create_random_username() -> str:
+    alphabet_num = string.ascii_lowercase + string.digits
+    random_name = "".join(secrets.choice(alphabet_num) for _ in range(20))
+    return random_name
 
 
 def regist_user(
@@ -62,7 +64,7 @@ def regist_user(
         )
     
     hashed_password = get_password_hash(password)
-    username = get_defalt_username_by_email(email)
+    username = create_random_username()
     new_user = User(
         username=username,
         email=email,
@@ -74,14 +76,14 @@ def regist_user(
     return new_user
 
 
-def get_user_by_id(
-        user_id: int,
+def get_user_by_email(
+        email: str,
         db: Session
 ) -> UserReadById | None:
-    
+
     user = db.scalar(
         select(User)
-        .where(User.id == user_id)
+        .where(User.email == email)
     )
     if user is None:
         return None
@@ -89,13 +91,13 @@ def get_user_by_id(
 
 
 def authenticate_user(
-        user_id: int,
+        user_email: str,
         password: str,
         db: Session
 ) -> UserAuthenticate | None:
     
-    user = get_user_by_id(
-        user_id,
+    user = get_user_by_email(
+        user_email,
         db
     )
     if user is None:
@@ -160,7 +162,7 @@ async def get_current_user(
     except InvalidTokenError:
         raise credentials_exception
     
-    user = get_user_by_id(
+    user = get_user_by_email(
         token_data.email,
         db
     )
