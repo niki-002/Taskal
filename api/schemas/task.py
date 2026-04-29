@@ -18,7 +18,9 @@ class TaskCreate(TaskBase):
 
 
 class TaskUpdate(TaskCreate):
-    pass
+    title: str
+    description: str
+    limit: date
 
 
 # レスポンススキーマ

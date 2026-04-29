@@ -105,11 +105,10 @@ def update_task(
     if task is None:
         return None
     
-    task = Task(
-        title = new_data.title,
-        description = new_data.description,
-        limit = new_data.limit
-    )
+    task.title = new_data.title
+    task.description = new_data.description
+    task.limit = new_data.limit
+    
     db.commit()
     db.refresh(task)
     return task

@@ -65,7 +65,7 @@ def create_task(
     )
 
 
-@router.patch(
+@router.put(
     "/{task_id}",
     status_code=200,
     response_model=task.TaskResponse
