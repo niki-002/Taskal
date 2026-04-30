@@ -7,13 +7,13 @@ class TaskBase(BaseModel):
         ...,
         min_length=1,
         max_length=200,
-        example="書類チェック"
+        examples=["書類チェック"]
         )
 
 
 # リクエストスキーマ
 class TaskCreate(TaskBase):
-    description: str = Field(max_length=1000, example="赤字を中心に見る。")
+    description: str = Field(max_length=1000, examples=["赤字を中心に見る。"])
     limit: date
 
 
@@ -27,7 +27,7 @@ class TaskUpdate(TaskCreate):
 class TaskResponse(TaskBase):
     id: int
     owner_id: int
-    description: str = Field(max_length=1000, example="赤字を中心に見る。")
+    description: str = Field(max_length=1000, examples=["赤字を中心に見る。"])
     limit: date
     done_flag: bool
 

@@ -6,7 +6,7 @@ class UserBase(BaseModel):
     username: str = Field(
         ...,
         min_length=1,
-        example="World",
+        examples=["World"],
         pattern=r"^[a-zA-Z0-9_-]" # ユーザ名に使える文字の指定
     )
     email: EmailStr = Field(...)
