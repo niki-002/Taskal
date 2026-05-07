@@ -11,7 +11,7 @@ from typing import Annotated
 from ..db import get_db
 from ..core.config import Settings
 from ..models.auth import User
-from ..schemas.auth import UserReadById, UserAuthenticate, TokenData, UserRegistResponse
+from ..schemas.auth import UserReadByEmail, UserAuthenticate, TokenData, UserRegistResponse
 
 
 password_hash = PasswordHash.recommended()
@@ -79,7 +79,7 @@ def regist_user(
 def get_user_by_email(
         email: str,
         db: Session
-) -> UserReadById | None:
+) -> UserReadByEmail | None:
 
     user = db.scalar(
         select(User)
@@ -141,7 +141,7 @@ def create_access_token(
 async def get_current_user(
         token: Annotated[str, Depends(oauth2_scheme)],
         db: Annotated[Session, Depends(get_db)]
-) -> UserReadById | None:
+) -> UserReadByEmail | None:
     
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,

@@ -16,7 +16,7 @@ class UserRegistResponse(UserBase):
     id: int
 
     
-class UserReadById(UserBase):
+class UserReadByEmail(UserBase):
     id: int
     hashed_password: str = Field(...)
     disabled: bool | None
