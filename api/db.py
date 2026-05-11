@@ -1,25 +1,30 @@
 # データベース取得&セッション作成
-import os
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from .core.config import settings
 
 # 環境変数からデータベースのURLを取得
-DATABASE_URL = os.getenv("DATABASE_URL")
+DATABASE_URL = settings.database_url
 if not DATABASE_URL:
     raise RuntimeError("DATABASE_URL is not set.")
 
 # データベース接続の窓口
-database_engine = create_engine(DATABASE_URL, pool_pre_ping=True)
+db_engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True
+)
 
 # 1リクエスト中のDB操作単位
-database_session = sessionmaker(autoflush=False, 
-                                autocommit=False, 
-                                bind=database_engine)
+db_session = sessionmaker(
+    autoflush=False,
+    autocommit=False,
+    bind=db_engine
+)
 
 # FastAPI依存注入の関数
-def get_database():
-    database = database_session()
+async def get_db():
+    db = db_session()
     try:
-        yield database
+        yield db
     finally:
-        database.close()
+        db.close()
