@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Taskal</title>
+    <link rel="stylesheet" href="../css/common.css" />
+    <link rel="stylesheet" href="../css/index.css" />
+  </head>
+  <body>
+    <header class="header">
+      <h1>Taskal</h1>
+      <img class="avatar" src=""/>
+    </header>
+      <!-- <p>これは簡易的なタスク管理アプリです。</p> -->
+
+      <fieldset id="create_task">
+        <form>
+            <input id="title" class="text" type="text" maxlength="200" required placeholder="タイトル（必須）"/><br>
+            <input id="description" class="text" type="text" maxlength="1000" placeholder="詳細はこちら"/><br>
+            <input id="limit" class="date" type="date"/><br>
+            <button id="submitButton" class="button" type="button" >追加</button>
+        </form>
+      </fieldset>
+
+      <fieldset id="read_task">
+        <h2>タスク一覧</h2>
+        <div class="row">
+          <button id="reload_button" class="button" type="button">再読み込み</button>
+        </div>
+        <ul id="task_list" class="list"></ul>
+      </fieldset>
+  
+    <script src="../js/main.js"></script>
+  </body>
+</html>
