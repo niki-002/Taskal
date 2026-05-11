@@ -2,34 +2,34 @@ const apiBase = "/api/auth";
 
 // トークン取得
 async function get_token(payload) {
-    try {
-        const response = await fetch(`${apiBase}/token`, {
-            method: "POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify(payload)
-        });
-        if (!response.ok) {
-            throw new Error("Failed to get token");
-        }
-        const result = await response.json();
-        return result;
-    } catch(error) {
-        alert(error.message);
+    const formData = new URLSearchParams();
+    formData.append("username", payload.email);
+    formData.append("password", payload.password);
+
+    const response = await fetch(`${apiBase}/token`, {
+        method: "POST",
+        headers: {"Content-Type": "application/x-www-form-urlencoded"},
+        body: formData
+    });
+    if (!response.ok) {
+        throw new Error("Failed to get token");
     }
+    const result = await response.json();
+    return result;
 }
 
 // user取得
 async function read_user_me() {
-    try {
-        const response = await fetch(`${apiBase}/users/me`);
-        if (!response.ok) {
-            throw new Error("Failed to read user");
-        }
-        const reslut = await response.json();
-        return reslut;
-    } catch(error) {
-        alert(error.message);
+    const token = localStorage.getItem("access_token");
+
+    const response = await fetch(`${apiBase}/users/me`, {
+        headers: {"Authorization": `Bearer ${token}`}
+    });
+    if (!response.ok) {
+        throw new Error("Failed to read user");
     }
+    const result = await response.json();
+    return result;
 }
 
 // ログイン処理本体

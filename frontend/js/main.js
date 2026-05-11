@@ -1,83 +1,89 @@
 const apiBase = "/api/tasks";
 
+// localStorageに保存したログイントークンを取り出す
+function getToken() {
+  return localStorage.getItem("access_token");
+}
+
+// ログイン必須APIに付けるheadersを作る
+function getAuthHeaders() {
+  const token = getToken();
+  if (!token) {
+    throw new Error("ログインしてください");
+  }
+  return {
+    "Authorization": `Bearer ${token}`,
+  };
+}
+
 // データ取得(リスト)
 async function getTasks() {
-  try {
-    const response = await fetch(apiBase);
-    if (!response.ok) {
-      throw new Error("Failed to get tasks");
-    }
-    const result = await response.json();
-    return result; 
-  } catch(error) {
-    alert(error.message);
-  }  
+  const response = await fetch(apiBase, {
+    headers: getAuthHeaders()
+  });
+  if (!response.ok) {
+    throw new Error("Failed to get tasks");
+  }
+  const result = await response.json();
+  return result;
 }
 
 // データ取得(単体)
 async function getTask(task_id) {
-  try {
-    const response = await fetch(`${apiBase}/${task_id}`);
-    if (!response.ok) {
-      throw new Error("Failed to get task");
-    }
-    const result = await response.json();
-    return result;
-  } catch(error) {
-    alert(error.message);
+  const response = await fetch(`${apiBase}/${task_id}`, {
+    headers: getAuthHeaders()
+  });
+  if (!response.ok) {
+    throw new Error("Failed to get task");
   }
+  const result = await response.json();
+  return result;
 }
 
 // データ登録API
 async function createTask(payload) {
-  try {
-    const response = await fetch(apiBase, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    if (!response.ok) {
-      throw new Error("Failed to create task");
-    }
-    const reslut = await response.json(); 
-    return reslut;
-  } catch(error) {
-    alert(error.message);
-  } 
+  const response = await fetch(apiBase, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders()
+    },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    throw new Error("Failed to create task");
+  }
+  const result = await response.json();
+  return result;
 }
 
 // データ更新API
 async function updatetask(payload, task_id) {
-  try {
-    const response = await fetch(payload,`${apiBase}/${task_id}`,{
-        method: "PUT",
-        headers: { "Content-Type": "aplication/json" },
-        body: JSON.stringify(payload)
-      }
-    );
-    if (!response.ok) {
-      throw new Error("Failed to update task");
-    }
-    const result = await response.json();
-    return result
-  } catch(error) {
-    alert(error.message);
+  const response = await fetch(`${apiBase}/${task_id}`, {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      ...getAuthHeaders()
+    },
+    body: JSON.stringify(payload)
+  });
+  if (!response.ok) {
+    throw new Error("Failed to update task");
   }
+  const result = await response.json();
+  return result;
 }
 
 // データ削除API 
 async function deleteTask(task_id) {
-  try {
-    const response = await fetch(`${apiBase}/${task_id}`,
-      {"method": "DELETE"}
-    );
-    if (!response.ok) {
-      throw new Error("Failed to delete task");
-    }
-    return;
-  } catch(error) {
-    alert(error.message);
+  const response = await fetch(`${apiBase}/${task_id}`, {
+    method: "DELETE",
+    headers: getAuthHeaders()
+  });
+  if (!response.ok) {
+    throw new Error("Failed to delete task");
   }
+  return;
 }
 
 // 画面描画関数
@@ -103,6 +109,8 @@ function renderTasks(tasks) {
     update_button.className = "update";
     update_button.textContent = "編集";
     update_button.addEventListener("click", async () => {
+      if (li.querySelector("#update_form")) return;
+
       const section = document.createElement("section")
       const form = document.createElement("form")
       const title = document.createElement("input")
@@ -123,26 +131,30 @@ function renderTasks(tasks) {
       limit.id = "new_limit"
       limit.type = "date"
       button.id = "new_submitButton"
-      button.type = "button"
+      button.type = "submit"
       button.textContent = "更新"
-      form.appendChild(title, description, limit, button)
+      form.append(title, description, limit, button)
       section.appendChild(form)
-    })
-    // タスク情報更新処理
-    document.getElementById("update_form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const title = document.getElementById("new_title").value.trim();
-      const description = document.getElementById("new_description").value.trim();
-      const limit = document.getElementById("new_limit").value.trim();
 
-      try {
-        await updatetask({title, description, limit}, task.id);
-        document.getElementById("title").value = ""
-        reload();
-      } catch(error) {
-        alert(error.message);
-      }
-    });
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const newTitle = title.value.trim();
+        const newDescription = description.value.trim();
+        const newLimit = limit.value.trim();
+
+        try {
+          await updatetask(
+            {title: newTitle, description: newDescription, limit: newLimit},
+            task.id
+          );
+          await reload();
+        } catch(error) {
+          alert(error.message);
+        }
+      });
+
+      li.appendChild(section)
+    })
 
     const delete_button = document.createElement("button");
     delete_button.className = "secondary";
@@ -159,6 +171,7 @@ function renderTasks(tasks) {
 
     li.appendChild(checkbox);
     li.appendChild(content);
+    li.appendChild(update_button);
     li.appendChild(delete_button);
     list.appendChild(li);
   }
@@ -166,8 +179,12 @@ function renderTasks(tasks) {
 
 // 再読み込み関数
 async function reload() {
-  const tasks = await getTasks();
-  renderTasks(tasks);
+  try {
+    const tasks = await getTasks();
+    renderTasks(tasks);
+  } catch(error) {
+    alert(error.message);
+  }
 }
 
 // 新規登録処理
