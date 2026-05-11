@@ -1,0 +1,101 @@
+@charset "UTF-8";
+
+body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: black;
+}
+
+.mainpage {
+    background-color: white;
+    border-radius: 5px;
+    padding: 20px;
+    margin-top: 70px;
+    width: 400px;
+    height: 550px;
+    box-sizing: border-box;
+}
+
+.logo_area {
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.svg {
+    width: 120px;
+}
+
+.description {
+    text-align: center;
+    font-size: 20px;
+    margin-top: 0;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+}
+
+.input_field {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    width: 300px;
+}
+
+#email_label,
+#password_label {
+    position: relative;
+    background-color: white;
+    font-size: 14px;
+    text-align: left;
+    margin: 0px 0px -10px 15px;
+    z-index: 1;
+}
+
+.email,
+.password,
+.button {
+    position: relative;
+    width: 300px;
+    height: 50px;
+    box-sizing: border-box;
+}
+
+#regist_button {
+    background-color: rgb(0, 167, 250);
+    color: white;
+    border: 0px;
+    border-radius: 3px;
+    padding: 10px;
+    width: 300px;
+    margin: 10px;
+}
+
+#regist_button:hover,
+#regist_button:focus {
+    background-color: rgb(0, 117, 250);
+}
+
+.email,
+.password {
+    display: block;
+    padding: 0 12px;
+}
+
+.link {
+    color: blue;
+    text-decoration-line: none;
+    display: flex;
+    justify-content: center;
+    padding: 15px;
+}
+
+.link:hover,
+.link:focus {
+    color: purple   ;
+}

@@ -1,0 +1,43 @@
+.header {
+    margin: 0px auto auto 50px;
+}
+
+#create_task {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    border: 2px solid rgb(87, 87, 87);
+    padding: 20px;
+    margin: auto 300px 50px 300px;
+}
+
+.text,
+.date {
+    width: 500px;
+    height: 40px;
+    margin: 10px ;
+}
+
+.button {
+    width: 80px;
+    height: 40px;
+    margin-left: 10px;
+    margin-top: 5px;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+#read_task {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    border: 2px solid rgb(87, 87, 87);
+    padding: 20px;
+    margin: auto 300px 50px 300px;
+}
+
+#reload_button {
+    width: 100px;
+}
