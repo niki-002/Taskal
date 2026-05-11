@@ -15,11 +15,11 @@
       <!-- <p>これは簡易的なタスク管理アプリです。</p> -->
 
       <fieldset id="create_task">
-        <form>
+        <form id="create_form">
             <input id="title" class="text" type="text" maxlength="200" required placeholder="タイトル（必須）"/><br>
             <input id="description" class="text" type="text" maxlength="1000" placeholder="詳細はこちら"/><br>
-            <input id="limit" class="date" type="date"/><br>
-            <button id="submitButton" class="button" type="button" >追加</button>
+            <input id="limit" class="date" type="date" required/><br>
+            <button id="submitButton" class="button" type="submit" >追加</button>
         </form>
       </fieldset>
 
