@@ -22,7 +22,7 @@ class UserReadByEmail(UserBase):
     disabled: bool | None
 
 
-class UserAuthenticate(UserReadById):
+class UserAuthenticate(UserReadByEmail):
     pass
 
 

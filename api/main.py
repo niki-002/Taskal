@@ -45,4 +45,4 @@ def on_startup():
 
 @app.get("/")
 def root():
-    return FileResponse(str(FRONTEND_DIR / "index.html"))
+    return FileResponse(str(FRONTEND_DIR / "html" / "auth_login.html"))
