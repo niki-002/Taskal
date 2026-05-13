@@ -22,8 +22,7 @@ if not TEST_DATABASE_URL:
 def client():
     engine = create_engine(
         TEST_DATABASE_URL,
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+        pool_pre_ping=True,
     )
     testing_session = sessionmaker(
         autoflush=False,
