@@ -10,17 +10,19 @@ from api.db import get_db
 from api.main import app
 from api.models.Base import Base
 from api.models import auth, task  # noqa: F401
+from api.core.config import settings
 
 
-TEST_DATABASE_URL = "sqlite+pysqlite:///:memory:"
+TEST_DATABASE_URL = settings.test_database_url
+if not TEST_DATABASE_URL:
+    raise RuntimeError("TEST_DATABASE_URL is not set.")
 
 
 @pytest.fixture()
 def client():
     engine = create_engine(
         TEST_DATABASE_URL,
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
+        pool_pre_ping=True,
     )
     testing_session = sessionmaker(
         autoflush=False,
