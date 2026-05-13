@@ -44,7 +44,7 @@ document.querySelector("#login form").addEventListener("submit", async (e) => {
 
         localStorage.setItem("access_token", result.access_token);
 
-        location.href = "../html/index.html";
+        location.href = "/frontend/html/index.html";
     } catch(error) {
         alert(error.message);
     }
