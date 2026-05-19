@@ -106,7 +106,8 @@ function renderTasks(tasks) {
     content.appendChild(title)
 
     const update_button = document.createElement("button");
-    update_button.className = "update";
+    update_button.id = "update_button"
+    update_button.className = "button";
     update_button.textContent = "編集";
     update_button.addEventListener("click", async () => {
       if (li.querySelector("#update_form")) return;
@@ -157,7 +158,8 @@ function renderTasks(tasks) {
     })
 
     const delete_button = document.createElement("button");
-    delete_button.className = "secondary";
+    delete_button.id = "delete_button"
+    delete_button.className = "button";
     delete_button.textContent = "削除";
     delete_button.addEventListener("click", async () => {
       if (!confirm("削除しますか？")) return;

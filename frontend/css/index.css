@@ -41,3 +41,17 @@
 #reload_button {
     width: 100px;
 }
+
+.item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 5px;
+    border: 2px solid rgb(87, 87, 87);
+    padding: 20px;
+    margin: 20px 20px 20px 20px;
+}
+
+.class {
+    list-style: none;
+}
