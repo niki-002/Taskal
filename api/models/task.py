@@ -15,10 +15,10 @@ class Task(Base):
         String(200),
         index=True,
         nullable=False
-        )
+    )
     description: Mapped[str] = mapped_column(String(1000))
     limit: Mapped[date] = mapped_column() 
     done_flag: Mapped[bool] = mapped_column(
         nullable=False,
         default=False
-        )
+    )
