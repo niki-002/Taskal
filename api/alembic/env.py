@@ -7,8 +7,8 @@ from alembic import context
 
 from api.core.config import settings
 from api.models.Base import Base
-from api.models.auth import User
-from api.models.task import Task
+import api.models.auth
+import api.models.task
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
