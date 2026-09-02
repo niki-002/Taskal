@@ -1,9 +1,9 @@
 # アプリの処理 & データベース操作
 from sqlalchemy import select
 from sqlalchemy.orm import Session
-from api.models.task import Task
-from api.models.auth import User
-from api.schemas import task
+from app.models.task import Task
+from app.models.auth import User
+from app.schemas import task
 
 
 def get_tasks(

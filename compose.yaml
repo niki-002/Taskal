@@ -1,0 +1,48 @@
+services:
+  backend:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+
+    working_dir: /app
+
+    command:
+      uvicorn app.main:app
+      --host 0.0.0.0
+      --port 8000
+      --reload
+    
+    ports:
+      - "8000:8000"
+
+    volumes:
+      - ./backend:/app
+
+    env_file:
+      - .env.docker
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: postgres:16
+
+    env_file:
+      - .env.docker
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/postgres_data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  
+volumes:
+  postgres_data:

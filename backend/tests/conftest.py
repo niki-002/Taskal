@@ -17,9 +17,9 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import sessionmaker
 
-from api.core.config import settings
-from api.db import get_db
-from api.main import app
+from Taskal.backend.app.core.config import settings
+from Taskal.backend.app.db import get_db
+from Taskal.backend.app.main import app
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]

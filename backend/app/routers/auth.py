@@ -5,10 +5,10 @@ from sqlalchemy.orm import Session
 from typing import Annotated
 from datetime import timedelta
 
-from api.schemas.auth import Token, UserRegistResponse, UserAuthenticate
-from api.services import auth_service
-from api.db import get_db
-from ..core.config import Settings
+from app.schemas.auth import Token, UserRegistResponse, UserAuthenticate
+from app.services import auth_service
+from app.db import get_db
+from app.core.config import Settings
 
 settings = Settings()
 

@@ -3,11 +3,11 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from typing import Annotated
 
-from api.db import get_db
-from api.services import task_service
-from api.schemas import task
-from api.models.auth import User
-from api.services.auth_service import get_current_active_user
+from app.db import get_db
+from app.services import task_service
+from app.schemas import task
+from app.models.auth import User
+from app.services.auth_service import get_current_active_user
 
 
 router = APIRouter(prefix="/api/tasks")
