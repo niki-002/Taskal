@@ -8,10 +8,10 @@ from sqlalchemy.orm import Session
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
-from ..db import get_db
-from ..core.config import Settings
-from ..models.auth import User
-from ..schemas.auth import UserReadByEmail, UserAuthenticate, TokenData, UserRegistResponse
+from app.db import get_db
+from app.core.config import Settings
+from app.models.auth import User
+from app.schemas.auth import UserReadByEmail, UserAuthenticate, TokenData, UserRegistResponse
 
 
 password_hash = PasswordHash.recommended()
