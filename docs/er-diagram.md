@@ -13,6 +13,7 @@ erDiagram
     SCHEDULES ||--o{ PLANNED_TRANSACTIONS : generates
 
     ACCOUNTS ||--o{ TRANSACTIONS : contains
+    ACCOUNTS ||--o{ PLANNED_TRANSACTIONS : planned for
 
     PLANNED_TRANSACTIONS ||--o| TRANSACTIONS : actualized_as
 
@@ -21,7 +22,7 @@ erDiagram
         int id PK "ユーザーID"
         string email UK "メールアドレス"
         string username "ユーザー名"
-        string hashed_password "ハッシュ化されたパスワード"
+        string auth_subject UK "Auth0のsub"
         datetime created_at "ユーザー作成日時"
     }
 
