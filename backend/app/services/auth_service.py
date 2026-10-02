@@ -1,42 +1,54 @@
 import jwt, secrets, string
 from fastapi import HTTPException, status, Depends
-from fastapi.security import OAuth2PasswordBearer
-from jwt.exceptions import InvalidTokenError
-from pwdlib import PasswordHash
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from jwt.exceptions import InvalidTokenError, PyJWKClientError
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta, timezone
-from typing import Annotated
+from functools import lru_cache
+from typing import Annotated, Any
 
 from app.db import get_db
-from app.core.config import Settings
+from app.core.config import settings
 from app.models.auth import User
-from app.schemas.auth import UserReadByEmail, UserAuthenticate, TokenData, UserRegistResponse
 
 
-password_hash = PasswordHash.recommended()
+# Authorizationヘッダーが無い場合も自前で401を返すため auto_error=False にする
+bearer_scheme = HTTPBearer(auto_error=False)
 
-DUMMY_HASH = password_hash.hash("dummypassword")
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/token")
-
-settings = Settings()
-
-
-# 実際のパスワードとDBに登録しているハッシュ化されたパスワードが対応しているかチェックする関数
-def verify_password(
-        plain_password: str,
-        hashed_password: str
-) -> bool:
-    
-    return password_hash.verify(
-        plain_password,
-        hashed_password
-    )
+credentials_exception = HTTPException(
+    status_code=status.HTTP_401_UNAUTHORIZED,
+    detail="Could not validate credentials",
+    headers={"WWW-Authenticate": "Bearer"}
+)
 
 
-def get_password_hash(password: str) -> str:
-    return password_hash.hash(password)
+# Auth0の公開鍵(JWKS)を取得するクライアント（鍵はクライアント内でキャッシュされる）
+@lru_cache
+def get_jwks_client() -> jwt.PyJWKClient:
+    return jwt.PyJWKClient(settings.auth0_jwks_url)
+
+
+# トークンのヘッダー(kid)に対応する署名検証用の公開鍵を取得する関数
+def get_signing_key(token: str) -> Any:
+    return get_jwks_client().get_signing_key_from_jwt(token).key
+
+
+# Auth0が発行したアクセストークンを検証し、中身(クレーム)を返す関数
+def verify_access_token(token: str) -> dict[str, Any]:
+    try:
+        signing_key = get_signing_key(token)
+        payload = jwt.decode(
+            token,
+            signing_key,
+            algorithms=settings.auth0_algorithms,
+            audience=settings.auth0_audience,
+            issuer=settings.auth0_issuer,
+            options={"require": ["exp", "iss", "aud", "sub"]}
+        )
+    except (InvalidTokenError, PyJWKClientError):
+        raise credentials_exception
+    return payload
 
 
 def create_random_username() -> str:
@@ -45,139 +57,64 @@ def create_random_username() -> str:
     return random_name
 
 
-def regist_user(
-        email: str,
-        password: str,
+def get_user_by_subject(
+        auth_subject: str,
         db: Session
-) -> UserRegistResponse:
-    
-    existing_user = db.scalar(
+) -> User | None:
+
+    return db.scalar(
         select(User)
-        .where(
-            User.email == email
-        )
+        .where(User.auth_subject == auth_subject)
     )
-    if existing_user is not None:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="The email has already been used."
-        )
-    
-    hashed_password = get_password_hash(password)
-    username = create_random_username()
+
+
+# 初回アクセス時にAuth0のsubをもとにTaskal側のUserを作成する関数
+def get_or_create_user(
+        auth_subject: str,
+        email: str | None,
+        db: Session
+) -> User:
+
+    user = get_user_by_subject(auth_subject, db)
+    if user is not None:
+        # メールアドレスはAuth0側で変更されるため、トークンの値と異なれば同期する
+        if email is not None and user.email != email:
+            user.email = email
+            db.commit()
+            db.refresh(user)
+        return user
+
     new_user = User(
-        username=username,
+        username=create_random_username(),
         email=email,
-        hashed_password=hashed_password
+        auth_subject=auth_subject
     )
     db.add(new_user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        # 同じユーザーの初回リクエストが同時に来た場合は、先に作成された方を使う
+        db.rollback()
+        user = get_user_by_subject(auth_subject, db)
+        if user is None:
+            raise
+        return user
     db.refresh(new_user)
     return new_user
 
 
-def get_user_by_email(
-        email: str,
-        db: Session
-) -> UserReadByEmail | None:
-
-    user = db.scalar(
-        select(User)
-        .where(User.email == email)
-    )
-    if user is None:
-        return None
-    return user
-
-
-def authenticate_user(
-        user_email: str,
-        password: str,
-        db: Session
-) -> UserAuthenticate | None:
-    
-    user = get_user_by_email(
-        user_email,
-        db
-    )
-    if user is None:
-        verify_password(
-            password,
-            DUMMY_HASH
-        )
-        return None
-    if not verify_password(
-        password,
-        user.hashed_password
-    ):
-        return None
-    return user
-
-
-def create_access_token(
-        data: dict,
-        expires_delta: timedelta | None = None
-) -> str:
-    
-    to_encode = data.copy()
-
-    # 有効期限が指定されている場合 
-    if expires_delta is not None:
-        expire = datetime.now(timezone.utc) + expires_delta
-    
-    # 有効期限が指定されていない場合（デフォルトを15分に設定）
-    else:
-        expire = datetime.now(timezone.utc) + timedelta(minutes=15)
-    
-    to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(
-        to_encode,
-        settings.secret_key,
-        algorithm=settings.algorithm
-    )
-    return encoded_jwt
-
-
 async def get_current_user(
-        token: Annotated[str, Depends(oauth2_scheme)],
+        credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
         db: Annotated[Session, Depends(get_db)]
-) -> UserReadByEmail | None:
-    
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-authenticate": "Bearer"}
-    )
-    try:
-        payload = jwt.decode(
-            token,
-            settings.secret_key,
-            algorithms=[settings.algorithm]
-        )
-        email = payload.get("sub")
-        if email is None:
-            raise credentials_exception
-        token_data = TokenData(email=email)
+) -> User:
 
-    except InvalidTokenError:
+    if credentials is None:
         raise credentials_exception
-    
-    user = get_user_by_email(
-        token_data.email,
+
+    payload = verify_access_token(credentials.credentials)
+    email = payload.get(settings.auth0_email_claim)
+    return get_or_create_user(
+        payload["sub"],
+        email if isinstance(email, str) else None,
         db
     )
-    if user is None:
-        raise credentials_exception
-    return user
-
-
-async def get_current_active_user(
-        current_user: Annotated[UserAuthenticate, Depends(get_current_user)]
-) -> UserAuthenticate:
-    
-    if current_user.disabled:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Inactive user."
-        )
-    return current_user

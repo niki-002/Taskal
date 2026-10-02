@@ -5,7 +5,6 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers import task
-from app.routers import auth
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent # mainの親の親=Taskalディレクトリを基準とする
@@ -13,7 +12,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent # mainの親の親=Taskalデ�
 app = FastAPI(title="Taskal")
 
 app.include_router(task.router)
-app.include_router(auth.router)
 
 origins = [
     "http://127.0.0.1:8000/"

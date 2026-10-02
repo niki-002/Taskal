@@ -1,4 +1,6 @@
-from sqlalchemy import Boolean, String
+from datetime import datetime
+
+from sqlalchemy import DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column
 from .base import Base
 
@@ -13,14 +15,21 @@ class User(Base):
         index=True,
         nullable=False
         )
-    email: Mapped[str] = mapped_column(
+    # Auth0のアクセストークンにメールアドレスが含まれない場合もあるためNULLを許可する
+    email: Mapped[str | None] = mapped_column(
+        unique=True,
+        index=True,
+        nullable=True
+        )
+    # Auth0のsub（例: "auth0|xxxxxxxx"）
+    auth_subject: Mapped[str] = mapped_column(
+        String(255),
         unique=True,
         index=True,
         nullable=False
-        )
-    hashed_password: Mapped[str] = mapped_column(nullable=False)
-    disabled: Mapped[bool] = mapped_column(
-        Boolean,
-        default=False,
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        server_default=func.now(),
         nullable=False
     )

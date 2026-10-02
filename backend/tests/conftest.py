@@ -1,25 +1,20 @@
+from datetime import datetime, timedelta, timezone
 from itertools import count
 from pathlib import Path
 
+import jwt
 import pytest
 from alembic import command
 from alembic.config import Config
+from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi.testclient import TestClient
-from sqlalchemy import (
-    Boolean,
-    Column,
-    Integer,
-    MetaData,
-    String,
-    Table,
-    create_engine,
-    text,
-)
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-from Taskal.backend.app.core.config import settings
-from Taskal.backend.app.db import get_db
-from Taskal.backend.app.main import app
+from app.core.config import settings
+from app.db import get_db
+from app.main import app
+from app.services import auth_service
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -28,29 +23,16 @@ if not TEST_DATABASE_URL:
     raise RuntimeError("TEST_DATABASE_URL is not set.")
 
 
-BASELINE_METADATA = MetaData()
-Table(
-    "users",
-    BASELINE_METADATA,
-    Column("id", Integer, primary_key=True),
-    Column("username", String(50), nullable=False),
-    Column("email", String, nullable=False),
-    Column("hashed_password", String, nullable=False),
-)
-Table(
-    "tasks",
-    BASELINE_METADATA,
-    Column("id", Integer, primary_key=True),
-    Column("title", String(200), nullable=False),
-    Column("done_flag", Boolean, nullable=False),
-)
+# Auth0の代わりにテスト用の鍵でトークンを署名する
+TEST_PRIVATE_KEY = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+TEST_PUBLIC_KEY = TEST_PRIVATE_KEY.public_key()
 
 
 def _make_alembic_config() -> Config:
     alembic_config = Config(str(PROJECT_ROOT / "alembic.ini"))
     alembic_config.set_main_option(
         "script_location",
-        str(PROJECT_ROOT / "api" / "alembic"),
+        str(PROJECT_ROOT / "alembic"),
     )
     alembic_config.set_main_option(
         "sqlalchemy.url",
@@ -75,6 +57,37 @@ def _drop_test_schema(engine) -> None:
         connection.execute(text("DROP TABLE IF EXISTS alembic_version CASCADE"))
 
 
+# JWKS(Auth0の公開鍵)の取得をモックし、テスト用の公開鍵を返す
+@pytest.fixture(autouse=True)
+def mock_signing_key(monkeypatch):
+    monkeypatch.setattr(auth_service, "get_signing_key", lambda token: TEST_PUBLIC_KEY)
+
+
+@pytest.fixture()
+def make_token():
+    def _make_token(
+        sub: str = "auth0|test-user",
+        email: str | None = None,
+        private_key=TEST_PRIVATE_KEY,
+        **overrides,
+    ) -> str:
+        now = datetime.now(timezone.utc)
+        payload = {
+            "sub": sub,
+            "iss": settings.auth0_issuer,
+            "aud": settings.auth0_audience,
+            "iat": now,
+            "exp": now + timedelta(minutes=5),
+        }
+        if email is not None:
+            payload[settings.auth0_email_claim] = email
+        payload.update(overrides)
+        payload = {key: value for key, value in payload.items() if value is not None}
+        return jwt.encode(payload, private_key, algorithm="RS256")
+
+    return _make_token
+
+
 @pytest.fixture()
 def client():
     alembic_config = _make_alembic_config()
@@ -83,7 +96,6 @@ def client():
         pool_pre_ping=True,
     )
     _drop_test_schema(engine)
-    BASELINE_METADATA.create_all(bind=engine)
     _run_migration("upgrade", alembic_config, "head")
 
     testing_session = sessionmaker(
@@ -110,49 +122,20 @@ def client():
 
 
 @pytest.fixture()
-def create_user(client: TestClient):
+def auth_headers(make_token):
     user_numbers = count(1)
 
-    def _create_user(email: str | None = None, password: str = "password123"):
-        email = email or f"user{next(user_numbers)}@example.com"
-        response = client.post(
-            "/api/auth",
-            data={
-                "username": email,
-                "password": password,
-            },
-        )
-        assert response.status_code == 200
-        user = response.json()
-        return {
-            "id": user["id"],
-            "email": email,
-            "password": password,
-            "username": user["username"],
-        }
-
-    return _create_user
-
-
-@pytest.fixture()
-def login_user(client: TestClient):
-    def _login_user(email: str, password: str):
-        response = client.post(
-            "/api/auth/token",
-            data={
-                "username": email,
-                "password": password,
-            },
-        )
-        assert response.status_code == 200
-        token = response.json()["access_token"]
+    def _auth_headers(sub: str | None = None, email: str | None = None):
+        sub = sub or f"auth0|user{next(user_numbers)}"
+        token = make_token(sub=sub, email=email)
         return {"Authorization": f"Bearer {token}"}
 
-    return _login_user
+    return _auth_headers
 
 
 @pytest.fixture()
-def authenticated_user(create_user, login_user):
-    user = create_user()
-    user["headers"] = login_user(user["email"], user["password"])
-    return user
+def authenticated_user(auth_headers):
+    return {
+        "sub": "auth0|authenticated-user",
+        "headers": auth_headers(sub="auth0|authenticated-user"),
+    }

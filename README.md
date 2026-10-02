@@ -24,7 +24,7 @@ Webエンジニアとして必要なバックエンド開発の基礎を身に�
 - FastAPI
 - SQLAlchemy
 - Pydantic
-- JWT, pwdlib
+- Auth0（PyJWTでアクセストークンを検証）
 
 ### データベース
 - PostgreSQL
@@ -117,10 +117,31 @@ pip install -r requirements.txt
 DATABASE_URL=
 TEST_DATABASE_URL=
 
-SECRET_KEY = 
-ALGORITHM = 
-ACCESS_TOKEN_EXPIRE_MINUTES = 
+AUTH0_DOMAIN=
+AUTH0_AUDIENCE=
+AUTH0_EMAIL_CLAIM=   # 任意（既定値: https://taskal.app/email）
 ```
+
+#### Auth0の設定
+
+ログイン・新規登録・パスワード再設定はAuth0が担当し、APIはAuth0が発行したアクセストークンのみで認証します。
+
+1. Auth0の **APIs** でAPIを作成し、Identifierを `AUTH0_AUDIENCE` に設定（署名アルゴリズムはRS256）
+2. **Applications** で「Single Page Application」を作成し、以下を設定
+    - Allowed Callback URLs：`http://127.0.0.1:8000/frontend/html/index.html`
+    - Allowed Logout URLs：`http://127.0.0.1:8000/frontend/html/auth_login.html`
+    - Allowed Web Origins：`http://127.0.0.1:8000`
+    - Refresh Token Rotation：有効
+3. `frontend/js/auth_config.js` にテナントのDomain、SPAのClient ID、APIのIdentifierを設定
+4. （任意）Taskal側のユーザーにメールアドレスを保存する場合は、Post Login Actionでアクセストークンにクレームを追加
+
+```js
+exports.onExecutePostLogin = async (event, api) => {
+  api.accessToken.setCustomClaim("https://taskal.app/email", event.user.email);
+};
+```
+
+初回アクセス時に、アクセストークンの `sub` をもとにTaskal側のユーザーが自動作成されます。
 
 ### 5. サーバーの起動
 

@@ -1,16 +1,8 @@
 const apiBase = "/api/tasks";
 
-// localStorageに保存したログイントークンを取り出す
-function getToken() {
-  return localStorage.getItem("access_token");
-}
-
-// ログイン必須APIに付けるheadersを作る
-function getAuthHeaders() {
-  const token = getToken();
-  if (!token) {
-    throw new Error("ログインしてください");
-  }
+// ログイン必須APIに付けるheadersを作る（Auth0のアクセストークンを使う）
+async function getAuthHeaders() {
+  const token = await getAccessToken();
   return {
     "Authorization": `Bearer ${token}`,
   };
@@ -19,7 +11,7 @@ function getAuthHeaders() {
 // データ取得(リスト)
 async function getTasks() {
   const response = await fetch(apiBase, {
-    headers: getAuthHeaders()
+    headers: await getAuthHeaders()
   });
   if (!response.ok) {
     throw new Error("Failed to get tasks");
@@ -31,7 +23,7 @@ async function getTasks() {
 // データ取得(単体)
 async function getTask(task_id) {
   const response = await fetch(`${apiBase}/${task_id}`, {
-    headers: getAuthHeaders()
+    headers: await getAuthHeaders()
   });
   if (!response.ok) {
     throw new Error("Failed to get task");
@@ -46,7 +38,7 @@ async function createTask(payload) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...getAuthHeaders()
+      ...(await getAuthHeaders())
     },
     body: JSON.stringify(payload),
   });
@@ -63,7 +55,7 @@ async function updatetask(payload, task_id) {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      ...getAuthHeaders()
+      ...(await getAuthHeaders())
     },
     body: JSON.stringify(payload)
   });
@@ -78,7 +70,7 @@ async function updatetask(payload, task_id) {
 async function deleteTask(task_id) {
   const response = await fetch(`${apiBase}/${task_id}`, {
     method: "DELETE",
-    headers: getAuthHeaders()
+    headers: await getAuthHeaders()
   });
   if (!response.ok) {
     throw new Error("Failed to delete task");
@@ -205,7 +197,13 @@ document.getElementById("create_form").addEventListener("submit", async (e) => {
   }
 });
 
-reload();
+// Auth0からのリダイレクトを処理してからタスクを読み込む
+handleRedirectCallback()
+  .then(reload)
+  .catch((error) => alert(error.message));
 
 // 再読み込みボタン処理
 document.getElementById("reload_button").addEventListener("click", reload);
+
+// ログアウトボタン処理
+document.getElementById("logout_button").addEventListener("click", logout);
