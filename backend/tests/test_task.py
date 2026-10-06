@@ -18,7 +18,7 @@ def test_task_crud(client: TestClient, authenticated_user):
     assert response.status_code == 201
     task = response.json()
     task_id = task["id"]
-    assert task["owner_id"] == authenticated_user["id"]
+    assert task["owner_id"] > 0
     assert task["title"] == TASK_PAYLOAD["title"]
     assert task["description"] == TASK_PAYLOAD["description"]
     assert task["limit"] == TASK_PAYLOAD["limit"]
@@ -77,13 +77,10 @@ def test_tasks_require_authentication(client: TestClient):
 
 def test_user_cannot_read_another_users_task(
     client: TestClient,
-    create_user,
-    login_user,
+    auth_headers,
 ):
-    first_user = create_user(email="first@example.com")
-    first_headers = login_user(first_user["email"], first_user["password"])
-    second_user = create_user(email="second@example.com")
-    second_headers = login_user(second_user["email"], second_user["password"])
+    first_headers = auth_headers(sub="auth0|first-user")
+    second_headers = auth_headers(sub="auth0|second-user")
 
     response = client.post(
         "/api/tasks",

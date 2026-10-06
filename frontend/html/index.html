@@ -11,6 +11,7 @@
     <header class="header">
       <h1>Taskal</h1>
       <img class="avatar" src=""/>
+      <button id="logout_button" class="button" type="button">ログアウト</button>
     </header>
       <!-- <p>これは簡易的なタスク管理アプリです。</p> -->
 
@@ -31,6 +32,9 @@
         <ul id="task_list" class="list"></ul>
       </fieldset>
   
+    <script src="https://cdn.auth0.com/js/auth0-spa-js/2.1/auth0-spa-js.production.js"></script>
+    <script src="/frontend/js/auth_config.js"></script>
+    <script src="/frontend/js/auth.js"></script>
     <script src="../js/main.js"></script>
   </body>
 </html>
