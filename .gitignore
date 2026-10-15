@@ -1,8 +1,23 @@
-.venv
+# Python
+.venv/
+venv/
 __pycache__/
 *.pyc
+.pytest_cache/
+*.egg-info/
+.coverage
+htmlcov/
+
+# 環境変数
 .env
 .env.*
 !.env.example
-.pytest_cache
-svg
+
+# Node.js（#36で使用）
+node_modules/
+dist/
+
+# エディタ・OS
+.vscode/
+.idea/
+.DS_Store

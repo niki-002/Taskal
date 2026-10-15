@@ -12,7 +12,7 @@ GoogleCalenderとの連携は外部API連携として、Integration層に分離�
 ## 2. 技術スタック
 - フロントエンド
     - TypeScript
-    - React
+    - React（Vite、React Router）
     - Tailwind CSS
 - バックエンド
     - Python
