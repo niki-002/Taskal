@@ -1,6 +1,6 @@
 # Taskal
 
-Taskalは、日々のタスクをシンプルに管理するためのタスク管理Webアプリです。FastAPI・PostgreSQL・Javascriptを用いて、タスクの作成・一覧表示・削除ができる構成で実装しました。バックエンドAPIとフロントエンドを分けて開発し、CRUD処理とDB連携の基礎を学ぶことを目的に制作しました。
+Taskalは、日々のタスクをシンプルに管理するためのタスク管理Webアプリです。FastAPI・PostgreSQL・TypeScript + Reactを用いて、タスクの作成・一覧表示・削除ができる構成で実装しました。バックエンドAPIとフロントエンドを分けて開発し、CRUD処理とDB連携の基礎を学ぶことを目的に制作しました。
 
 ## 作成背景
 
@@ -15,9 +15,12 @@ Webエンジニアとして必要なバックエンド開発の基礎を身に�
 ## 技術スタック
 
 ### フロントエンド
-- HTML
-- CSS
-- javascript
+- TypeScript
+- React
+- Vite
+- React Router
+- Auth0（`@auth0/auth0-react`）
+- ESLint / Prettier
  
 ### バックエンド
 - Python
@@ -71,10 +74,24 @@ Taskal
   │   ├── db.py                 # DB接続管理
   │   └── main.py               # API起動ファイル
   │
-  ├── frontend                  # フロントエンド
+  ├── frontend                  # フロントエンド（Vite + React + TypeScript）
+  │   ├── public
+  │   │   └── icon.svg
+  │   ├── src
+  │   │   ├── api               # fetchラッパー（client.ts）、タスクAPI関数（tasks.ts）
+  │   │   ├── types             # APIの型定義
+  │   │   ├── components        # TaskForm, TaskList, TaskItem, LoginButton など
+  │   │   ├── pages             # LoginPage, RegisterPage, TasksPage
+  │   │   ├── hooks             # useApi（トークン付きfetch）など
+  │   │   ├── styles            # CSS
+  │   │   ├── config.ts         # Auth0の設定値・画面のパス
+  │   │   ├── App.tsx           # ルーティング定義
+  │   │   └── main.tsx          # エントリーポイント
   │   ├── index.html
-  │   ├── style.css
-  │   └── main.js
+  │   ├── package.json
+  │   ├── eslint.config.js
+  │   ├── tsconfig.json
+  │   └── vite.config.ts        # 開発サーバー・/apiのプロキシ設定
   │
   └── tests                     # テスト用
       ├── conftest.py           # 共通処理
@@ -87,6 +104,7 @@ Taskal
 ### 前提環境
 
 - Python 3.12 以上
+- Node.js 20.19 以上（または 22.12 以上）
 - PostgreSQL
 - Git
 
@@ -120,7 +138,14 @@ TEST_DATABASE_URL=
 AUTH0_DOMAIN=
 AUTH0_AUDIENCE=
 AUTH0_EMAIL_CLAIM=   # 任意（既定値: https://taskal.app/email）
+
+# フロントエンド（Vite）用
+VITE_AUTH0_DOMAIN=
+VITE_AUTH0_CLIENT_ID=
+VITE_AUTH0_AUDIENCE=
 ```
+
+フロントエンドもリポジトリ直下の `.env` を読み込みます（`VITE_` で始まる変数だけがブラウザに公開されます）。
 
 #### Auth0の設定
 
@@ -128,11 +153,11 @@ AUTH0_EMAIL_CLAIM=   # 任意（既定値: https://taskal.app/email）
 
 1. Auth0の **APIs** でAPIを作成し、Identifierを `AUTH0_AUDIENCE` に設定（署名アルゴリズムはRS256）
 2. **Applications** で「Single Page Application」を作成し、以下を設定
-    - Allowed Callback URLs：`http://127.0.0.1:8000/frontend/html/index.html`
-    - Allowed Logout URLs：`http://127.0.0.1:8000/frontend/html/auth_login.html`
-    - Allowed Web Origins：`http://127.0.0.1:8000`
+    - Allowed Callback URLs：`http://localhost:5173`
+    - Allowed Logout URLs：`http://localhost:5173/login`
+    - Allowed Web Origins：`http://localhost:5173`
     - Refresh Token Rotation：有効
-3. `frontend/js/auth_config.js` にテナントのDomain、SPAのClient ID、APIのIdentifierを設定
+3. `.env` の `VITE_AUTH0_DOMAIN`・`VITE_AUTH0_CLIENT_ID`・`VITE_AUTH0_AUDIENCE` にテナントのDomain、SPAのClient ID、APIのIdentifierを設定
 4. （任意）Taskal側のユーザーにメールアドレスを保存する場合は、Post Login Actionでアクセストークンにクレームを追加
 
 ```js
@@ -161,6 +186,30 @@ APIドキュメントは以下でアクセスします。
 ```bash
 pytest
 ```
+
+### 6. フロントエンドの起動
+
+バックエンド（`http://localhost:8000`）を起動した状態で、別のターミナルで実行します。
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+ブラウザで http://localhost:5173 を開きます。`/api` へのリクエストは Vite の開発サーバーがバックエンドへプロキシします。
+
+| コマンド | 内容 |
+| --- | --- |
+| `npm run dev` | 開発サーバーを起動 |
+| `npm run build` | 型チェック（`tsc`）と本番ビルド（`frontend/dist`） |
+| `npm run lint` | ESLint |
+| `npm run format` | Prettierで整形 |
+
+#### 画面
+- `/login`：ログイン画面
+- `/register`：新規登録画面
+- `/`：タスク一覧画面（未ログイン時は `/login` へリダイレクト）
 
 ## 主要エンドポイント
 - ```GET /api/tasks```：タスク一覧取得
