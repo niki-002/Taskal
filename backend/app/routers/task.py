@@ -1,5 +1,5 @@
 # APIのURL定義
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from typing import Annotated
 
@@ -10,7 +10,7 @@ from app.models.auth import User
 from app.services.auth_service import get_current_user
 
 
-router = APIRouter(prefix="/api/tasks")
+router = APIRouter(prefix="/tasks")
 
 
 @router.get(
@@ -35,17 +35,11 @@ def get_task(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)]
 ):
-    task =  task_service.get_task(
+    return task_service.get_task(
         task_id,
         db,
         current_user
     )
-    if task is None:
-        raise HTTPException(
-            status_code=404,
-            detail="task not found."
-        )
-    return task
 
 
 @router.post(
@@ -76,18 +70,12 @@ def update_task(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)]
 ):
-    task = task_service.update_task(
+    return task_service.update_task(
         task_id,
         new_data,
         db,
         current_user
     )
-    if task is None:
-        raise HTTPException(
-            status_code=404,
-            detail="task not found."
-        )
-    return task
 
 
 @router.delete(
@@ -99,14 +87,9 @@ def delete_task(
     db: Annotated[Session, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)]
 ):
-    task = task_service.delete_task(
+    task_service.delete_task(
         task_id,
         db,
         current_user
     )
-    if not task:
-        raise HTTPException(
-            status_code=404,
-            detail="task not found."
-        )
     return None 

@@ -10,7 +10,7 @@ TASK_PAYLOAD = {
 
 def test_task_crud(client: TestClient, authenticated_user):
     response = client.post(
-        "/api/tasks",
+        "/api/v1/tasks",
         json=TASK_PAYLOAD,
         headers=authenticated_user["headers"],
     )
@@ -25,7 +25,7 @@ def test_task_crud(client: TestClient, authenticated_user):
     assert task["done_flag"] is False
 
     response = client.get(
-        "/api/tasks",
+        "/api/v1/tasks",
         headers=authenticated_user["headers"],
     )
     assert response.status_code == 200
@@ -34,7 +34,7 @@ def test_task_crud(client: TestClient, authenticated_user):
     assert tasks[0]["id"] == task_id
 
     response = client.get(
-        f"/api/tasks/{task_id}",
+        f"/api/v1/tasks/{task_id}",
         headers=authenticated_user["headers"],
     )
     assert response.status_code == 200
@@ -46,7 +46,7 @@ def test_task_crud(client: TestClient, authenticated_user):
         "limit": "2026-06-01",
     }
     response = client.put(
-        f"/api/tasks/{task_id}",
+        f"/api/v1/tasks/{task_id}",
         json=update_payload,
         headers=authenticated_user["headers"],
     )
@@ -57,20 +57,20 @@ def test_task_crud(client: TestClient, authenticated_user):
     assert updated_task["limit"] == update_payload["limit"]
 
     response = client.delete(
-        f"/api/tasks/{task_id}",
+        f"/api/v1/tasks/{task_id}",
         headers=authenticated_user["headers"],
     )
     assert response.status_code == 204
 
     response = client.get(
-        f"/api/tasks/{task_id}",
+        f"/api/v1/tasks/{task_id}",
         headers=authenticated_user["headers"],
     )
     assert response.status_code == 404
 
 
 def test_tasks_require_authentication(client: TestClient):
-    response = client.get("/api/tasks")
+    response = client.get("/api/v1/tasks")
 
     assert response.status_code == 401
 
@@ -83,7 +83,7 @@ def test_user_cannot_read_another_users_task(
     second_headers = auth_headers(sub="auth0|second-user")
 
     response = client.post(
-        "/api/tasks",
+        "/api/v1/tasks",
         json=TASK_PAYLOAD,
         headers=first_headers,
     )
@@ -91,13 +91,13 @@ def test_user_cannot_read_another_users_task(
     task_id = response.json()["id"]
 
     response = client.get(
-        f"/api/tasks/{task_id}",
+        f"/api/v1/tasks/{task_id}",
         headers=second_headers,
     )
     assert response.status_code == 404
 
     response = client.get(
-        "/api/tasks",
+        "/api/v1/tasks",
         headers=second_headers,
     )
     assert response.status_code == 200

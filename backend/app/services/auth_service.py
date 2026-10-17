@@ -1,26 +1,22 @@
 import jwt, secrets, string
-from fastapi import HTTPException, status, Depends
+from fastapi import Depends
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt.exceptions import InvalidTokenError, PyJWKClientError
-from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from functools import lru_cache
 from typing import Annotated, Any
 
 from app.db import get_db
 from app.core.config import settings
+from app.core.errors import UnauthorizedError
 from app.models.auth import User
+from app.repositories import user_repository
 
 
 # Authorizationヘッダーが無い場合も自前で401を返すため auto_error=False にする
 bearer_scheme = HTTPBearer(auto_error=False)
 
-credentials_exception = HTTPException(
-    status_code=status.HTTP_401_UNAUTHORIZED,
-    detail="Could not validate credentials",
-    headers={"WWW-Authenticate": "Bearer"}
-)
+credentials_exception = UnauthorizedError("Could not validate credentials")
 
 
 # Auth0の公開鍵(JWKS)を取得するクライアント（鍵はクライアント内でキャッシュされる）
@@ -62,10 +58,7 @@ def get_user_by_subject(
         db: Session
 ) -> User | None:
 
-    return db.scalar(
-        select(User)
-        .where(User.auth_subject == auth_subject)
-    )
+    return user_repository.get_by_subject(db, auth_subject)
 
 
 # 初回アクセス時にAuth0のsubをもとにTaskal側のUserを作成する関数
@@ -79,28 +72,17 @@ def get_or_create_user(
     if user is not None:
         # メールアドレスはAuth0側で変更されるため、トークンの値と異なれば同期する
         if email is not None and user.email != email:
-            user.email = email
-            db.commit()
-            db.refresh(user)
+            return user_repository.update_email(db, user, email)
         return user
 
-    new_user = User(
-        username=create_random_username(),
-        email=email,
-        auth_subject=auth_subject
+    return user_repository.create(
+        db,
+        User(
+            username=create_random_username(),
+            email=email,
+            auth_subject=auth_subject
+        )
     )
-    db.add(new_user)
-    try:
-        db.commit()
-    except IntegrityError:
-        # 同じユーザーの初回リクエストが同時に来た場合は、先に作成された方を使う
-        db.rollback()
-        user = get_user_by_subject(auth_subject, db)
-        if user is None:
-            raise
-        return user
-    db.refresh(new_user)
-    return new_user
 
 
 async def get_current_user(
