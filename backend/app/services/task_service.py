@@ -1,90 +1,57 @@
-# アプリの処理 & データベース操作
-from sqlalchemy import select
+# アプリの処理
 from sqlalchemy.orm import Session
 from app.models.task import Task
 from app.models.auth import User
+from app.repositories import task_repository
 from app.schemas import task
+from app.services.ownership import require_owned
+
+TASK_NOT_FOUND = "task not found."
 
 
 def get_tasks(
         db: Session,
         current_user: User
-) -> list[task.TaskResponse]:
-    
-    owner_id = current_user.id
-    tasks = list(
-        db.scalars(
-            select(Task)
-            .where(Task.owner_id == owner_id)
-        )
-    )
-    return tasks
+) -> list[Task]:
+    return task_repository.list_by_owner(db, current_user.id)
 
 
 def get_task(
         task_id: int,
         db: Session,
         current_user: User
-) -> task.TaskResponse | None:
-    
-    owner_id = current_user.id
-    task = db.scalar(
-        select(Task)
-        .where(
-            Task.id == task_id,
-            Task.owner_id == owner_id
-        )
+) -> Task:
+    return require_owned(
+        task_repository.get_by_id(db, task_id, current_user.id),
+        TASK_NOT_FOUND
     )
-    if task is None:
-        return None
-    return task
 
 
 def create_task(
         new_task: task.TaskCreate,
         db: Session,
         current_user: User
-) -> task.TaskResponse:
-    
-    task = Task(
-        title = new_task.title,
-        description = new_task.description,
-        limit = new_task.limit,
-        done_flag = False,
-        owner_id = current_user.id
+) -> Task:
+    return task_repository.add(
+        db,
+        Task(
+            title=new_task.title,
+            description=new_task.description,
+            limit=new_task.limit,
+            done_flag=False,
+            owner_id=current_user.id
+        )
     )
-    db.add(task)
-    db.commit()
-    db.refresh(task)
-    return task
 
 
 def update_done_flag(
         task_id: int,
         db: Session,
         current_user: User
-) -> task.TaskResponse | None:
-    
-    owner_id = current_user.id
-    task = db.scalar(
-        select(Task)
-        .where(
-            Task.id == task_id,
-            Task.owner_id == owner_id
-        )
-    )
-    if task is None:
-        return None
-    
-    if task.done_flag is False:
-        task.done_flag = True
-        db.commit()
-        db.refresh(task)
-    else:
-        task.done_flag = False
-        db.commit()
-        db.refresh(task) 
-    return task
+) -> Task:
+    target = get_task(task_id, db, current_user)
+    target.done_flag = not target.done_flag
+    return task_repository.save(db, target)
 
 
 def update_task(
@@ -92,44 +59,17 @@ def update_task(
         new_data: task.TaskUpdate,
         db: Session,
         current_user: User
-) -> task.TaskResponse | None:
-
-    owner_id = current_user.id
-    task = db.scalar(
-        select(Task)
-        .where(
-            Task.id == task_id,
-            Task.owner_id == owner_id
-        )
-    )
-    if task is None:
-        return None
-    
-    task.title = new_data.title
-    task.description = new_data.description
-    task.limit = new_data.limit
-    
-    db.commit()
-    db.refresh(task)
-    return task
+) -> Task:
+    target = get_task(task_id, db, current_user)
+    target.title = new_data.title
+    target.description = new_data.description
+    target.limit = new_data.limit
+    return task_repository.save(db, target)
 
 
 def delete_task(
         deleted_task_id: int,
         db: Session,
         current_user: User
-) -> bool:
-
-    owner_id = current_user.id
-    deleted_task = db.scalar(
-        select(Task)
-        .where(
-            Task.id == deleted_task_id,
-            Task.owner_id == owner_id
-        )
-    )
-    if deleted_task is None:
-        return False
-    db.delete(deleted_task)
-    db.commit()
-    return True
+) -> None:
+    task_repository.delete(db, get_task(deleted_task_id, db, current_user))

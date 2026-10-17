@@ -1,9 +1,10 @@
 # アプリ起動周りの設定
 from pathlib import Path
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.core.errors import register_exception_handlers
 from app.routers import task
 
 
@@ -11,7 +12,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent # mainの親の親=Taskalデ�
 
 app = FastAPI(title="Taskal")
 
-app.include_router(task.router)
+register_exception_handlers(app)
+
+api_v1 = APIRouter(prefix="/api/v1")
+api_v1.include_router(task.router)
+
+app.include_router(api_v1)
 
 origins = [
     "http://127.0.0.1:8000/"
