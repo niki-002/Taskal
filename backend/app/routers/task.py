@@ -4,10 +4,10 @@ from sqlalchemy.orm import Session
 from typing import Annotated
 
 from app.db import get_db
-from app.services import task_service
+from app.services import task as task_service
 from app.schemas import task
 from app.models.auth import User
-from app.services.auth_service import get_current_user
+from app.services.auth import get_current_user
 
 
 router = APIRouter(prefix="/tasks")

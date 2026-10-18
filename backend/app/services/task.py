@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.models.auth import User
 from app.models.schedule import Schedule
 from app.models.task import Task
-from app.repositories import task_repository
+from app.repositories import task as task_repository
 from app.schemas import task
 from app.services.ownership import require_owned
 

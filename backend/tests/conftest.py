@@ -14,7 +14,7 @@ from sqlalchemy.orm import sessionmaker
 from app.core.config import settings
 from app.db import get_db
 from app.main import app
-from app.services import auth_service
+from app.services.auth import TokenVerifier
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -69,7 +69,7 @@ def _drop_test_schema(engine) -> None:
 # JWKS(Auth0の公開鍵)の取得をモックし、テスト用の公開鍵を返す
 @pytest.fixture(autouse=True)
 def mock_signing_key(monkeypatch):
-    monkeypatch.setattr(auth_service, "get_signing_key", lambda token: TEST_PUBLIC_KEY)
+    monkeypatch.setattr(TokenVerifier, "get_signing_key", lambda self, token: TEST_PUBLIC_KEY)
 
 
 @pytest.fixture()
