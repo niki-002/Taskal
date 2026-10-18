@@ -188,6 +188,7 @@ def test_task_repository_pagination(client: TestClient, authenticated_user):
     from app.main import app
     from app.models.auth import User
     from app.repositories import task_repository
+    from app.services import task_service
     from sqlalchemy import select
 
     for i in range(3):
@@ -200,12 +201,13 @@ def test_task_repository_pagination(client: TestClient, authenticated_user):
     try:
         owner_id = db.scalar(select(User.id))
         rows = task_repository.list_page_by_owner(db, owner_id, limit=2)
-        page = build_page(rows, 2)
+        # Taskの主キーはschedule_idのため、idを持つレスポンスに変換してからページにする
+        page = build_page([task_service.to_response(row) for row in rows], 2)
         assert len(page.items) == 2 and page.next_cursor
         rows = task_repository.list_page_by_owner(
             db, owner_id, limit=2, after_id=decode_cursor(page.next_cursor)
         )
-        page2 = build_page(rows, 2)
+        page2 = build_page([task_service.to_response(row) for row in rows], 2)
         assert len(page2.items) == 1 and page2.next_cursor is None
     finally:
         db.close()
