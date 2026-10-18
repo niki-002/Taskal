@@ -52,9 +52,18 @@ def _run_migration(command_name: str, alembic_config: Config, revision: str) -> 
 
 def _drop_test_schema(engine) -> None:
     with engine.begin() as connection:
-        connection.execute(text("DROP TABLE IF EXISTS tasks CASCADE"))
-        connection.execute(text("DROP TABLE IF EXISTS users CASCADE"))
-        connection.execute(text("DROP TABLE IF EXISTS alembic_version CASCADE"))
+        for table_name in (
+            "transactions",
+            "planned_transactions",
+            "accounts",
+            "shifts",
+            "tasks",
+            "legacy_tasks",
+            "schedules",
+            "users",
+            "alembic_version",
+        ):
+            connection.execute(text(f"DROP TABLE IF EXISTS {table_name} CASCADE"))
 
 
 # JWKS(Auth0の公開鍵)の取得をモックし、テスト用の公開鍵を返す
@@ -88,8 +97,9 @@ def make_token():
     return _make_token
 
 
+# テスト用DBを最新のマイグレーションまで適用し、終了後に削除する
 @pytest.fixture()
-def client():
+def migrated_engine():
     alembic_config = _make_alembic_config()
     engine = create_engine(
         TEST_DATABASE_URL,
@@ -97,11 +107,19 @@ def client():
     )
     _drop_test_schema(engine)
     _run_migration("upgrade", alembic_config, "head")
+    try:
+        yield engine
+    finally:
+        _drop_test_schema(engine)
+        engine.dispose()
 
+
+@pytest.fixture()
+def client(migrated_engine):
     testing_session = sessionmaker(
         autoflush=False,
         autocommit=False,
-        bind=engine,
+        bind=migrated_engine,
     )
 
     def override_get_db():
@@ -117,8 +135,6 @@ def client():
             yield test_client
     finally:
         app.dependency_overrides.clear()
-        _drop_test_schema(engine)
-        engine.dispose()
 
 
 @pytest.fixture()

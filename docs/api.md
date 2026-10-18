@@ -388,8 +388,16 @@ DELETE /schedules/{schedule_id}
 ```
 
 `204 No Content` を返します。関連するTaskまたはShiftも同時に削除します。
-関連する収支見込は金銭情報を守るため削除せず、`schedule_id` を `null` にします。
-収支実績も、元の収支見込との関係を維持したまま残します。
+
+関連する収支見込は、実績化済みかどうかで扱いを分けます。
+
+| 収支見込の状態 | 削除時の扱い | 理由 |
+| --- | --- | --- |
+| 未実績化 | 収支見込を削除する | 予定が無くなれば発生しない収支のため、残すと見込が実態とずれる |
+| 実績化済み | 削除せず、`schedule_id` を `null` にする | 実際の入出金の履歴を守るため |
+
+収支実績は、元の収支見込との関係を維持したまま残します。
+未実績化の収支見込の削除とScheduleの削除は、1つのDBトランザクションで実行します。
 
 ## 7. Tasks API
 
@@ -478,6 +486,7 @@ PATCHではTaskとScheduleの項目を同時に更新できます。
 ```
 
 DELETEはTaskだけでなく、対応するScheduleも削除して `204 No Content` を返します。
+関連する収支見込の扱いは [6.6 予定削除](#66-予定削除) と同じです。
 
 ## 8. Shifts API
 
@@ -573,6 +582,7 @@ PATCHではShiftとScheduleの項目を同時に更新できます。
 ```
 
 DELETEはShiftだけでなく、対応するScheduleも削除して `204 No Content` を返します。
+関連する収支見込の扱いは [6.6 予定削除](#66-予定削除) と同じです。
 
 ## 9. Accounts API
 
@@ -939,7 +949,8 @@ Scheduleの作成・更新・削除時に、対応するGoogle Calendarイベン
 ### 削除
 
 - Schedule削除時はTaskまたはShiftをCASCADE削除
-- Schedule削除時、PlannedTransactionの `schedule_id` は `null` にする
+- Schedule削除時、未実績化のPlannedTransactionは削除する
+- Schedule削除時、実績化済みのPlannedTransactionは削除せず、`schedule_id` を `null` にする
 - Account削除時は `is_active=false` にする
 - ユーザー所有リソースの一括削除方針は別途定める
 
@@ -947,8 +958,15 @@ Scheduleの作成・更新・削除時に、対応するGoogle Calendarイベン
 
 ### 15.1 Schedule削除時の金融データ
 
-金融履歴を残すには、PLANNED_TRANSACTIONSの `schedule_id` をnullableにし、
-外部キーを `ON DELETE SET NULL` とする必要があります。
+実績化済みかどうかで削除時の扱いが変わるため、DBの外部キー制約だけでは表現できません。
+DBとService層で次のように役割を分けます。
+
+- DB: PLANNED_TRANSACTIONSの `schedule_id` をnullableにし、外部キーを `ON DELETE SET NULL` とする。
+  これにより、実績化済みの収支見込は予定との関連だけが外れて残る
+- Service層: Scheduleを削除する前に、同じDBトランザクション内で未実績化の収支見込を削除する
+
+`ON DELETE CASCADE` にすると実績化済みの収支見込まで削除されてしまい、
+「実績化済みのPlannedTransactionは変更・削除不可」のルールと矛盾するため採用しません。
 
 ### 15.2 Google Calendar連携情報
 
