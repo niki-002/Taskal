@@ -21,8 +21,8 @@ db_session = sessionmaker(
     bind=db_engine
 )
 
-# FastAPI依存注入の関数
-async def get_db():
+# FastAPI依存注入の関数（同期のSessionを扱うため async def にしない）
+def get_db():
     db = db_session()
     try:
         yield db

@@ -9,7 +9,7 @@ from sqlalchemy import select
 from app.db import get_db
 from app.main import app
 from app.models.auth import User
-from app.services.auth_service import verify_access_token
+from app.services.auth import TokenVerifier
 
 
 TASK_PAYLOAD = {
@@ -24,7 +24,7 @@ TASK_PAYLOAD = {
 def test_verify_access_token_returns_claims(make_token):
     token = make_token(sub="auth0|abc", email="abc@example.com")
 
-    payload = verify_access_token(token)
+    payload = TokenVerifier().verify_access_token(token)
 
     assert payload["sub"] == "auth0|abc"
 
@@ -34,7 +34,7 @@ def test_verify_access_token_rejects_expired_token(make_token):
     token = make_token(exp=expired)
 
     with pytest.raises(UnauthorizedError) as exc_info:
-        verify_access_token(token)
+        TokenVerifier().verify_access_token(token)
     assert exc_info.value.status_code == 401
 
 
@@ -42,7 +42,7 @@ def test_verify_access_token_rejects_wrong_audience(make_token):
     token = make_token(aud="https://other-api.example.com")
 
     with pytest.raises(UnauthorizedError) as exc_info:
-        verify_access_token(token)
+        TokenVerifier().verify_access_token(token)
     assert exc_info.value.status_code == 401
 
 
@@ -50,7 +50,7 @@ def test_verify_access_token_rejects_wrong_issuer(make_token):
     token = make_token(iss="https://evil.example.com/")
 
     with pytest.raises(UnauthorizedError) as exc_info:
-        verify_access_token(token)
+        TokenVerifier().verify_access_token(token)
     assert exc_info.value.status_code == 401
 
 
@@ -59,7 +59,7 @@ def test_verify_access_token_rejects_invalid_signature(make_token):
     token = make_token(private_key=other_key)
 
     with pytest.raises(UnauthorizedError) as exc_info:
-        verify_access_token(token)
+        TokenVerifier().verify_access_token(token)
     assert exc_info.value.status_code == 401
 
 
@@ -67,7 +67,7 @@ def test_verify_access_token_rejects_token_without_sub(make_token):
     token = make_token(sub=None)
 
     with pytest.raises(UnauthorizedError) as exc_info:
-        verify_access_token(token)
+        TokenVerifier().verify_access_token(token)
     assert exc_info.value.status_code == 401
 
 

@@ -13,12 +13,7 @@ from app.core.errors import (
     UnauthorizedError,
     ValidationError,
 )
-from app.core.pagination import (
-    PageParamsDep,
-    build_page,
-    decode_cursor,
-    encode_cursor,
-)
+from app.core.pagination import Cursor, Page, PageParamsDep
 from app.schemas.types import UTCDatetime
 from app.services.ownership import require_owned
 
@@ -102,6 +97,15 @@ def test_custom_message_and_details():
     assert error.details == [{"field": "x", "reason": "y"}]
 
 
+def test_app_error_to_response():
+    response = ConflictError("msg", [{"field": "x", "reason": "y"}]).to_response()
+
+    assert response.status_code == 409
+    assert response.body == (
+        b'{"error":{"code":"CONFLICT","message":"msg","details":[{"field":"x","reason":"y"}]}}'
+    )
+
+
 def test_api_returns_common_error_format(client: TestClient, authenticated_user):
     response = client.get("/api/v1/tasks")
     assert response.status_code == 401
@@ -127,14 +131,14 @@ def test_old_api_path_is_removed(client: TestClient, authenticated_user):
 # ---- ページング ----
 
 def test_cursor_round_trip():
-    assert decode_cursor(encode_cursor(42)) == 42
-    assert decode_cursor(None) is None
+    assert Cursor.decode(Cursor.encode(42)) == 42
+    assert Cursor.decode(None) is None
 
 
-@pytest.mark.parametrize("cursor", ["!!!", "YWJj", encode_cursor(0)])
+@pytest.mark.parametrize("cursor", ["!!!", "YWJj", Cursor.encode(0)])
 def test_invalid_cursor_raises_validation_error(cursor):
     with pytest.raises(ValidationError):
-        decode_cursor(cursor)
+        Cursor.decode(cursor)
 
 
 class _Row:
@@ -142,15 +146,15 @@ class _Row:
         self.id = id
 
 
-def test_build_page_with_next_cursor():
-    page = build_page([_Row(1), _Row(2), _Row(3)], limit=2)
+def test_page_from_rows_with_next_cursor():
+    page = Page.from_rows([_Row(1), _Row(2), _Row(3)], limit=2)
 
     assert [row.id for row in page.items] == [1, 2]
-    assert decode_cursor(page.next_cursor) == 2
+    assert Cursor.decode(page.next_cursor) == 2
 
 
-def test_build_page_last_page_has_no_cursor():
-    page = build_page([_Row(1), _Row(2)], limit=2)
+def test_page_from_rows_last_page_has_no_cursor():
+    page = Page.from_rows([_Row(1), _Row(2)], limit=2)
 
     assert len(page.items) == 2
     assert page.next_cursor is None
@@ -171,7 +175,7 @@ def test_page_params_default_and_values():
     client = _page_params_client()
 
     assert client.get("/params").json() == {"limit": 50, "after_id": None}
-    response = client.get("/params", params={"limit": 100, "cursor": encode_cursor(7)})
+    response = client.get("/params", params={"limit": 100, "cursor": Cursor.encode(7)})
     assert response.json() == {"limit": 100, "after_id": 7}
 
 
@@ -187,8 +191,8 @@ def test_task_repository_pagination(client: TestClient, authenticated_user):
     from app.db import get_db
     from app.main import app
     from app.models.auth import User
-    from app.repositories import task_repository
-    from app.services import task_service
+    from app.repositories import task as task_repository
+    from app.services import task as task_service
     from sqlalchemy import select
 
     for i in range(3):
@@ -202,12 +206,12 @@ def test_task_repository_pagination(client: TestClient, authenticated_user):
         owner_id = db.scalar(select(User.id))
         rows = task_repository.list_page_by_owner(db, owner_id, limit=2)
         # Taskの主キーはschedule_idのため、idを持つレスポンスに変換してからページにする
-        page = build_page([task_service.to_response(row) for row in rows], 2)
+        page = Page.from_rows([task_service.to_response(row) for row in rows], 2)
         assert len(page.items) == 2 and page.next_cursor
         rows = task_repository.list_page_by_owner(
-            db, owner_id, limit=2, after_id=decode_cursor(page.next_cursor)
+            db, owner_id, limit=2, after_id=Cursor.decode(page.next_cursor)
         )
-        page2 = build_page([task_service.to_response(row) for row in rows], 2)
+        page2 = Page.from_rows([task_service.to_response(row) for row in rows], 2)
         assert len(page2.items) == 1 and page2.next_cursor is None
     finally:
         db.close()

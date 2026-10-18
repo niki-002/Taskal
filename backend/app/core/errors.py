@@ -23,6 +23,9 @@ class AppError(Exception):
         self.headers = headers
         super().__init__(self.message)
 
+    def to_response(self) -> JSONResponse:
+        return error_response(self.status_code, self.code, self.message, self.details, self.headers)
+
 
 class BadRequestError(AppError):
     status_code = status.HTTP_400_BAD_REQUEST
@@ -89,7 +92,7 @@ def error_response(
 
 
 async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
-    return error_response(exc.status_code, exc.code, exc.message, exc.details, exc.headers)
+    return exc.to_response()
 
 
 async def validation_error_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
