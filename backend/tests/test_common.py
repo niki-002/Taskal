@@ -187,9 +187,8 @@ def test_page_params_invalid(params):
     assert response.json()["error"]["code"] == "VALIDATION_ERROR"
 
 
-def test_task_repository_pagination(client: TestClient, authenticated_user):
-    from app.db import get_db
-    from app.main import app
+@pytest.mark.anyio
+async def test_task_repository_pagination(client: TestClient, testing_session, authenticated_user):
     from app.models.auth import User
     from app.repositories import task as task_repository
     from app.services import task as task_service
@@ -201,20 +200,17 @@ def test_task_repository_pagination(client: TestClient, authenticated_user):
             json={"title": f"t{i}", "description": "d", "limit": "2026-05-01"},
             headers=authenticated_user["headers"],
         )
-    db = next(app.dependency_overrides[get_db]())
-    try:
-        owner_id = db.scalar(select(User.id))
-        rows = task_repository.list_page_by_owner(db, owner_id, limit=2)
+    async with testing_session() as db:
+        owner_id = await db.scalar(select(User.id))
+        rows = await task_repository.list_page_by_owner(db, owner_id, limit=2)
         # Taskの主キーはschedule_idのため、idを持つレスポンスに変換してからページにする
         page = Page.from_rows([task_service.to_response(row) for row in rows], 2)
         assert len(page.items) == 2 and page.next_cursor
-        rows = task_repository.list_page_by_owner(
+        rows = await task_repository.list_page_by_owner(
             db, owner_id, limit=2, after_id=Cursor.decode(page.next_cursor)
         )
         page2 = Page.from_rows([task_service.to_response(row) for row in rows], 2)
         assert len(page2.items) == 1 and page2.next_cursor is None
-    finally:
-        db.close()
 
 
 # ---- 日時型 ----

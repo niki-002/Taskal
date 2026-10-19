@@ -19,7 +19,7 @@ class UserService:
     def get_me(self, current_user: User) -> UserResponse:
         return UserResponse.model_validate(current_user)
 
-    def update_me(
+    async def update_me(
             self,
             new_data: UserUpdate,
             current_user: User
@@ -27,12 +27,12 @@ class UserService:
         if new_data.username == current_user.username:
             return self.get_me(current_user)
 
-        if self.repository.get_by_username(new_data.username) is not None:
+        if await self.repository.get_by_username(new_data.username) is not None:
             raise self._username_conflict()
 
         current_user.username = new_data.username
         try:
-            updated = self.repository.save(current_user)
+            updated = await self.repository.save(current_user)
         except IntegrityError:
             # 確認後に他のユーザーが同じ名前を登録した場合
             raise self._username_conflict()

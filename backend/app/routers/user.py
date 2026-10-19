@@ -14,7 +14,7 @@ router = APIRouter(prefix="/users")
     status_code=200,
     response_model=UserResponse
 )
-def get_me(
+async def get_me(
     service: UserServiceDep,
     current_user: CurrentUserDep
 ):
@@ -26,12 +26,12 @@ def get_me(
     status_code=200,
     response_model=UserResponse
 )
-def update_me(
+async def update_me(
     new_data: UserUpdate,
     service: UserServiceDep,
     current_user: CurrentUserDep
 ):
-    return service.update_me(
+    return await service.update_me(
         new_data,
         current_user
     )
