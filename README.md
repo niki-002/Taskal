@@ -183,9 +183,37 @@ APIドキュメントは以下でアクセスします。
 - Swagger UI：https://127.0.0.1:8000/docs
 
 #### テストの実行
+
+テストは `backend/` ディレクトリで実行します（`backend/pytest.ini` で `app` パッケージを読み込めるようにしています）。テスト用DBは `TEST_DATABASE_URL` が指すDBを使い、テストのたびにマイグレーションの適用とテーブルの削除を行います。
+
 ```bash
+cd backend
+pip install -r requirements-dev.txt   # pytest・httpx を含む開発用パッケージ
 pytest
 ```
+
+### Docker での開発・テスト
+
+`.env.example` をもとにリポジトリ直下に `.env.docker` を作成し、以下を実行します。
+
+```bash
+docker compose up -d --build
+docker compose exec backend alembic upgrade head   # 開発用DBにマイグレーションを適用
+docker compose exec backend pytest                 # テストを実行
+```
+
+- `backend` は開発用イメージ（`backend/Dockerfile` の `dev` ステージ）でビルドされ、`pytest`・`httpx` がインストールされます
+- テスト用DB（`TEST_DATABASE_URL` のDB名。例：`taskal_test`）は、DBボリュームの初回作成時に `db/init/01-create-test-db.sh` で自動作成されます
+
+#### 既存のDBボリュームを使っている場合
+
+初期化スクリプトはDBボリュームの初回作成時にしか実行されないため、それ以前から環境を使っている場合はテスト用DBを手動で作成します。
+
+```bash
+docker compose exec db sh -c 'createdb -U "$POSTGRES_USER" taskal_test'
+```
+
+`database "taskal_test" already exists` と表示された場合は作成済みです。
 
 ### 6. フロントエンドの起動
 
