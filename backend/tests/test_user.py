@@ -18,10 +18,10 @@ class FakeUserRepository:
         self.fail_on_save = fail_on_save
         self.saved: list[User] = []
 
-    def get_by_username(self, username: str) -> User | None:
+    async def get_by_username(self, username: str) -> User | None:
         return next((u for u in self.users if u.username == username), None)
 
-    def save(self, user: User) -> User:
+    async def save(self, user: User) -> User:
         if self.fail_on_save:
             raise IntegrityError("UPDATE users", {}, Exception("duplicate"))
         self.saved.append(user)
@@ -38,41 +38,45 @@ def _make_user(user_id: int, username: str) -> User:
     )
 
 
-def test_service_update_me_saves_new_username():
+@pytest.mark.anyio
+async def test_service_update_me_saves_new_username():
     me = _make_user(1, "before")
     repository = FakeUserRepository([me])
 
-    response = UserService(repository).update_me(UserUpdate(username="after"), me)
+    response = await UserService(repository).update_me(UserUpdate(username="after"), me)
 
     assert response.username == "after"
     assert repository.saved == [me]
 
 
-def test_service_update_me_with_same_username_does_not_save():
+@pytest.mark.anyio
+async def test_service_update_me_with_same_username_does_not_save():
     me = _make_user(1, "same")
     repository = FakeUserRepository([me])
 
-    response = UserService(repository).update_me(UserUpdate(username="same"), me)
+    response = await UserService(repository).update_me(UserUpdate(username="same"), me)
 
     assert response.username == "same"
     assert repository.saved == []
 
 
-def test_service_update_me_with_taken_username_raises_conflict():
+@pytest.mark.anyio
+async def test_service_update_me_with_taken_username_raises_conflict():
     me = _make_user(1, "me")
     repository = FakeUserRepository([me, _make_user(2, "taken")])
 
     with pytest.raises(ConflictError):
-        UserService(repository).update_me(UserUpdate(username="taken"), me)
+        await UserService(repository).update_me(UserUpdate(username="taken"), me)
     assert repository.saved == []
 
 
-def test_service_update_me_converts_integrity_error_to_conflict():
+@pytest.mark.anyio
+async def test_service_update_me_converts_integrity_error_to_conflict():
     me = _make_user(1, "me")
     repository = FakeUserRepository([me], fail_on_save=True)
 
     with pytest.raises(ConflictError):
-        UserService(repository).update_me(UserUpdate(username="race"), me)
+        await UserService(repository).update_me(UserUpdate(username="race"), me)
 
 
 # ---- Users API（DB使用） ----

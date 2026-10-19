@@ -1,9 +1,11 @@
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
+from sqlalchemy.engine import make_url
 
 
 BASE_DIR = Path(__file__).resolve().parents[2]
+
 
 class Settings(BaseSettings):
     database_url: str
@@ -19,6 +21,16 @@ class Settings(BaseSettings):
         env_file=BASE_DIR / ".env",
         env_file_encoding="utf-8"
     )
+
+    # Alembicは同期ドライバ(psycopg2)のまま使うため、アプリ用にはドライバをasyncpgに差し替えたURLを使う
+    # 例: postgresql+psycopg2://... → postgresql+asyncpg://...
+    @property
+    def async_database_url(self) -> str:
+        return self.to_async_url(self.database_url)
+
+    @staticmethod
+    def to_async_url(url: str) -> str:
+        return make_url(url).set(drivername="postgresql+asyncpg").render_as_string(hide_password=False)
 
     @property
     def auth0_issuer(self) -> str:

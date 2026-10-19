@@ -1,5 +1,6 @@
 import jwt, secrets, string
 from fastapi import Depends
+from fastapi.concurrency import run_in_threadpool
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jwt.exceptions import InvalidTokenError, PyJWKClientError
 from functools import cached_property
@@ -65,20 +66,20 @@ class AuthService:
         return random_name
 
     # 初回アクセス時にAuth0のsubをもとにTaskal側のUserを作成する
-    def get_or_create_user(
+    async def get_or_create_user(
             self,
             auth_subject: str,
             email: str | None
     ) -> User:
 
-        user = self.repository.get_by_subject(auth_subject)
+        user = await self.repository.get_by_subject(auth_subject)
         if user is not None:
             # メールアドレスはAuth0側で変更されるため、トークンの値と異なれば同期する
             if email is not None and user.email != email:
-                return self.repository.update_email(user, email)
+                return await self.repository.update_email(user, email)
             return user
 
-        return self.repository.create(
+        return await self.repository.create(
             User(
                 username=self.create_random_username(),
                 email=email,
@@ -95,8 +96,7 @@ TokenVerifierDep = Annotated[TokenVerifier, Depends(get_token_verifier)]
 AuthServiceDep = Annotated[AuthService, Depends(get_auth_service)]
 
 
-# DBアクセスと公開鍵の取得が同期処理のため、async defにせずスレッドプールで実行させる
-def get_current_user(
+async def get_current_user(
         credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
         verifier: TokenVerifierDep,
         service: AuthServiceDep
@@ -105,9 +105,10 @@ def get_current_user(
     if credentials is None:
         raise credentials_exception
 
-    payload = verifier.verify_access_token(credentials.credentials)
+    # 公開鍵(JWKS)の取得はPyJWKClientによる同期の通信なので、イベントループを止めないようスレッドプールで実行する
+    payload = await run_in_threadpool(verifier.verify_access_token, credentials.credentials)
     email = payload.get(settings.auth0_email_claim)
-    return service.get_or_create_user(
+    return await service.get_or_create_user(
         payload["sub"],
         email if isinstance(email, str) else None
     )

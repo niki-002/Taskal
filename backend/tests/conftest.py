@@ -9,7 +9,8 @@ from alembic.config import Config
 from cryptography.hazmat.primitives.asymmetric import rsa
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
 from app.core.config import settings
 from app.db import get_db
@@ -98,6 +99,7 @@ def make_token():
 
 
 # テスト用DBを最新のマイグレーションまで適用し、終了後に削除する
+# マイグレーションとテスト内での直接のDB確認には同期のエンジンを使う
 @pytest.fixture()
 def migrated_engine():
     alembic_config = _make_alembic_config()
@@ -114,20 +116,26 @@ def migrated_engine():
         engine.dispose()
 
 
+# アプリと同じくasyncpgのAsyncSessionを作る
+# TestClientのイベントループはテストごとに閉じられるため、ループに紐づく接続をプールに残さないようNullPoolにする
 @pytest.fixture()
-def client(migrated_engine):
-    testing_session = sessionmaker(
+def testing_session(migrated_engine):
+    async_engine = create_async_engine(
+        settings.to_async_url(TEST_DATABASE_URL),
+        poolclass=NullPool,
+    )
+    return async_sessionmaker(
+        async_engine,
         autoflush=False,
-        autocommit=False,
-        bind=migrated_engine,
+        expire_on_commit=False,
     )
 
-    def override_get_db():
-        db = testing_session()
-        try:
+
+@pytest.fixture()
+def client(testing_session):
+    async def override_get_db():
+        async with testing_session() as db:
             yield db
-        finally:
-            db.close()
 
     app.dependency_overrides[get_db] = override_get_db
     try:

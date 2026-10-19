@@ -1,6 +1,6 @@
 # APIのURL定義
 from fastapi import APIRouter, Depends
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated
 
 from app.db import get_db
@@ -18,11 +18,11 @@ router = APIRouter(prefix="/tasks")
     status_code=200,
     response_model=list[task.TaskResponse]
 )
-def get_tasks(
-    db: Annotated[Session, Depends(get_db)],
+async def get_tasks(
+    db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)]
 ):
-    return task_service.get_tasks(db, current_user)
+    return await task_service.get_tasks(db, current_user)
 
 
 @router.get(
@@ -30,12 +30,12 @@ def get_tasks(
     status_code=200,
     response_model=task.TaskResponse
 )
-def get_task(
+async def get_task(
     task_id: int,
-    db: Annotated[Session, Depends(get_db)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)]
 ):
-    return task_service.get_task(
+    return await task_service.get_task(
         task_id,
         db,
         current_user
@@ -47,12 +47,12 @@ def get_task(
     status_code=201,
     response_model=task.TaskResponse
 )
-def create_task(
+async def create_task(
     new_task: task.TaskCreate,
-    db: Annotated[Session, Depends(get_db)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)]
 ):
-    return task_service.create_task(
+    return await task_service.create_task(
         new_task,
         db,
         current_user
@@ -64,13 +64,13 @@ def create_task(
     status_code=200,
     response_model=task.TaskResponse
 )
-def update_task(
+async def update_task(
     task_id: int,
     new_data: task.TaskUpdate,
-    db: Annotated[Session, Depends(get_db)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)]
 ):
-    return task_service.update_task(
+    return await task_service.update_task(
         task_id,
         new_data,
         db,
@@ -82,12 +82,12 @@ def update_task(
     "/{task_id}",
     status_code=204,
 )
-def delete_task(
+async def delete_task(
     task_id: int,
-    db: Annotated[Session, Depends(get_db)],
+    db: Annotated[AsyncSession, Depends(get_db)],
     current_user: Annotated[User, Depends(get_current_user)]
 ):
-    task_service.delete_task(
+    await task_service.delete_task(
         task_id,
         db,
         current_user

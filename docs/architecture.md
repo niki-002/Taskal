@@ -17,7 +17,7 @@ GoogleCalenderとの連携は外部API連携として、Integration層に分離�
 - バックエンド
     - Python
     - FastAPI(RestAPI実装)
-    - SQLAlchemy(Pythonコード上でDB操作)
+    - SQLAlchemy(Pythonコード上でDB操作。asyncio拡張＋asyncpgで非同期に扱う)
     - Pydantic(入出力スキーマ)
     - Alembic(DBスキーマ変更をmigrationとして管理)
 - DB
@@ -103,7 +103,7 @@ Google Calendar API
 | --- | --- | --- | --- |
 | Router | （関数で書く） | - | Serviceの戻り値 |
 | Service | `XxxService` | Repository・Integration | `schemas` のレスポンス |
-| Repository | `XxxRepository` | DBセッション（`Session`） | `models` のインスタンス |
+| Repository | `XxxRepository` | DBセッション（`AsyncSession`） | `models` のインスタンス |
 | Integration | `XxxClient` | 設定値・認証情報 | 外部APIの結果 |
 
 - `Xxx` はドメイン名（ファイル名と同じ）。例: `services/schedule.py` の `ScheduleService`
@@ -118,11 +118,14 @@ Google Calendar API
 ```python
 # repositories/schedule.py
 class ScheduleRepository:
-    def __init__(self, db: Session):
+    def __init__(self, db: AsyncSession):
         self.db = db
 
+    async def get_by_id(self, schedule_id: int, owner_id: int) -> Schedule | None:
+        return await self.db.scalar(...)
 
-def get_schedule_repository(db: Annotated[Session, Depends(get_db)]) -> ScheduleRepository:
+
+def get_schedule_repository(db: Annotated[AsyncSession, Depends(get_db)]) -> ScheduleRepository:
     return ScheduleRepository(db)
 
 
@@ -134,6 +137,10 @@ class ScheduleService:
     def __init__(self, repository: ScheduleRepository):
         self.repository = repository
 
+    async def get_schedule(self, schedule_id: int, current_user: User) -> ScheduleResponse:
+        schedule = await self.repository.get_by_id(schedule_id, current_user.id)
+        ...
+
 
 def get_schedule_service(repository: ScheduleRepositoryDep) -> ScheduleService:
     return ScheduleService(repository)
@@ -144,13 +151,24 @@ ScheduleServiceDep = Annotated[ScheduleService, Depends(get_schedule_service)]
 
 # routers/schedule.py
 @router.get("/{schedule_id}", response_model=ScheduleResponse)
-def get_schedule(
+async def get_schedule(
     schedule_id: int,
     service: ScheduleServiceDep,
     current_user: CurrentUserDep
 ):
-    return service.get_schedule(schedule_id, current_user)
+    return await service.get_schedule(schedule_id, current_user)
 ```
+
+#### 非同期処理
+バックエンドは `async`/`await` で書く。DBには `create_async_engine`・`async_sessionmaker` で作った `AsyncSession`（ドライバはasyncpg）でアクセスする。
+- DBアクセスやI/Oを含むRepository・Service・Routerのメソッドは `async def` にし、呼び出し側で `await` する。I/Oを含まない処理（レスポンスへの変換など）は通常の `def` のままでよい
+- インスタンスを作るだけの `get_xxx_service`・`get_xxx_repository` は `def` のままにする
+- `AsyncSession` では属性アクセス時の遅延ロード（暗黙の同期I/O）ができず、`MissingGreenlet` になる。そのため次のようにする
+    - レスポンスで使うrelationshipは、クエリで `selectinload` などを指定して一緒に読み込む（例: `repositories/task.py` の `selectinload(Task.schedule)`）
+    - セッションは `expire_on_commit=False` で作る。commit後にDB側で決まる値（`server_default` など）が必要な場合は `await db.refresh(obj)` で読み直す。relationshipも読み直す場合は `await db.refresh(obj, ["属性名", "relationship名"])` のように名前を指定する
+- 同期処理しかないライブラリ（`PyJWKClient` による公開鍵の取得など）は、イベントループを止めないよう `run_in_threadpool` でスレッドプールに逃がす
+- Alembicのマイグレーションは同期ドライバ（psycopg2）のまま実行する。環境変数 `DATABASE_URL` は `postgresql+psycopg2://...` で設定し、アプリ側で `settings.async_database_url`（asyncpgに差し替えたURL）を使う
+- テストでは `TestClient` がイベントループを持つため、テスト関数は通常の `def` で書ける。Serviceの単体テストやRepositoryを直接呼ぶテストは `@pytest.mark.anyio` を付けた `async def` で書く
 
 #### import
 - クラスと `Dep` 付きの型は名前で直接importする。モジュールごとimportしない
@@ -173,7 +191,7 @@ FastAPIに関数として渡す必要があるものだけは関数で書く。
 - 例外ハンドラ
 
 #### テスト
-- Serviceの単体テストでは、コンストラクタに偽のRepository・Integrationを渡し、DBや外部APIなしで検証する
+- Serviceの単体テストでは、コンストラクタに偽のRepository・Integration（メソッドは `async def`）を渡し、DBや外部APIなしで検証する
 - APIのテストでは `TestClient` でエンドポイントを呼び、テスト用DBを使って検証する
 
 ## 5.ドメインごとの責務

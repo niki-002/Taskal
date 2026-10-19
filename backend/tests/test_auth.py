@@ -5,9 +5,8 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 from app.core.errors import UnauthorizedError
 from fastapi.testclient import TestClient
 from sqlalchemy import select
+from sqlalchemy.orm import Session
 
-from app.db import get_db
-from app.main import app
 from app.models.auth import User
 from app.services.auth import TokenVerifier
 
@@ -100,7 +99,7 @@ def test_request_with_expired_token_returns_401(client: TestClient, make_token):
     assert response.status_code == 401
 
 
-def test_first_access_creates_user(client: TestClient, auth_headers):
+def test_first_access_creates_user(client: TestClient, migrated_engine, auth_headers):
     headers = auth_headers(sub="auth0|first-access", email="first@example.com")
 
     response = client.get("/api/v1/tasks", headers=headers)
@@ -109,11 +108,8 @@ def test_first_access_creates_user(client: TestClient, auth_headers):
     response = client.post("/api/v1/tasks", json=TASK_PAYLOAD, headers=headers)
     assert response.status_code == 201
 
-    db = next(app.dependency_overrides[get_db]())
-    try:
+    with Session(migrated_engine) as db:
         users = list(db.scalars(select(User).where(User.auth_subject == "auth0|first-access")))
-    finally:
-        db.close()
     assert len(users) == 1
     assert users[0].email == "first@example.com"
     assert users[0].username
