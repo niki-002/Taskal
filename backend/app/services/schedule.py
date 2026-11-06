@@ -3,7 +3,7 @@ from typing import Annotated
 
 from fastapi import Depends
 
-from app.core.errors import ValidationError
+from app.core.errors import NotFoundError, ValidationError
 from app.core.pagination import Page, PageParams
 from app.models.auth import User
 from app.models.schedule import Schedule
@@ -19,7 +19,6 @@ from app.schemas.schedule import (
     ScheduleResponse,
     ScheduleUpdate,
 )
-from app.services.ownership import require_owned
 
 SCHEDULE_NOT_FOUND = "schedule not found."
 
@@ -78,11 +77,10 @@ class ScheduleService:
         target = await self._get_own_schedule(schedule_id, current_user)
         changes = new_data.model_dump(exclude_unset=True)
 
-        # 片方だけ更新する場合も、更新後の値どうしで前後関係を確認する
-        start_at = changes.get("start_at", target.start_at)
-        end_at = changes.get("end_at", target.end_at)
-        if end_at <= start_at:
-            raise ValidationError(details=[EndAfterStartError.to_detail()])
+        EndAfterStartError.check(
+            changes.get("start_at", target.start_at),
+            changes.get("end_at", target.end_at),
+        )
 
         for field, value in changes.items():
             setattr(target, field, value)
@@ -96,7 +94,7 @@ class ScheduleService:
         await self.repository.delete(target)
 
     async def _get_own_schedule(self, schedule_id: int, current_user: User) -> Schedule:
-        return require_owned(
+        return NotFoundError.require(
             await self.repository.get_by_id(schedule_id, current_user.id),
             SCHEDULE_NOT_FOUND
         )

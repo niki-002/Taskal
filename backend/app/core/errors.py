@@ -1,10 +1,12 @@
 # 共通エラー形式 {"error": {code, message, details}} を返すための例外とハンドラ
-from typing import Any
+from typing import Any, TypeVar
 
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
+
+T = TypeVar("T")
 
 
 class AppError(Exception):
@@ -45,6 +47,13 @@ class NotFoundError(AppError):
     status_code = status.HTTP_404_NOT_FOUND
     code = "NOT_FOUND"
     default_message = "リソースが見つかりません。"
+
+    # 存在しない場合も他ユーザー所有の場合も、存在を知らせないため同じ404にする
+    @classmethod
+    def require(cls, resource: T | None, message: str | None = None) -> T:
+        if resource is None:
+            raise cls(message)
+        return resource
 
 
 class ConflictError(AppError):

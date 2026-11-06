@@ -15,7 +15,6 @@ from app.core.errors import (
 )
 from app.core.pagination import Cursor, Page, PageParamsDep
 from app.schemas.types import UTCDatetime
-from app.services.ownership import require_owned
 
 
 # ---- エラー形式 ----
@@ -187,29 +186,41 @@ def test_page_params_invalid(params):
     assert response.json()["error"]["code"] == "VALIDATION_ERROR"
 
 
+def test_page_from_rows_with_key():
+    page = Page.from_rows([_Row(1), _Row(2), _Row(3)], limit=1, key=lambda row: row.id * 10)
+
+    assert Cursor.decode(page.next_cursor) == 10
+
+
 @pytest.mark.anyio
 async def test_task_repository_pagination(client: TestClient, testing_session, authenticated_user):
-    from app.models.auth import User
-    from app.repositories import task as task_repository
-    from app.services import task as task_service
     from sqlalchemy import select
+
+    from app.models.auth import User
+    from app.repositories.task import TaskRepository
 
     for i in range(3):
         client.post(
             "/api/v1/tasks",
-            json={"title": f"t{i}", "description": "d", "limit": "2026-05-01"},
+            json={
+                "schedule": {
+                    "title": f"t{i}",
+                    "start_at": "2026-05-01T00:00:00Z",
+                    "end_at": "2026-05-01T01:00:00Z",
+                },
+                "due_date": "2026-05-01T00:00:00Z",
+            },
             headers=authenticated_user["headers"],
         )
     async with testing_session() as db:
+        repository = TaskRepository(db)
         owner_id = await db.scalar(select(User.id))
-        rows = await task_repository.list_page_by_owner(db, owner_id, limit=2)
-        # Taskの主キーはschedule_idのため、idを持つレスポンスに変換してからページにする
-        page = Page.from_rows([task_service.to_response(row) for row in rows], 2)
+        rows = await repository.list_page(owner_id, limit=2)
+        # Taskの主キーはschedule_idのため、カーソルにはschedule_idを使う
+        page = Page.from_rows(rows, 2, key=lambda row: row.schedule_id)
         assert len(page.items) == 2 and page.next_cursor
-        rows = await task_repository.list_page_by_owner(
-            db, owner_id, limit=2, after_id=Cursor.decode(page.next_cursor)
-        )
-        page2 = Page.from_rows([task_service.to_response(row) for row in rows], 2)
+        rows = await repository.list_page(owner_id, limit=2, after=page.items[-1])
+        page2 = Page.from_rows(rows, 2, key=lambda row: row.schedule_id)
         assert len(page2.items) == 1 and page2.next_cursor is None
 
 
@@ -236,7 +247,8 @@ def test_utc_datetime_rejects_naive():
 
 # ---- 所有者チェック ----
 
-def test_require_owned():
-    assert require_owned("x") == "x"
-    with pytest.raises(NotFoundError):
-        require_owned(None)
+def test_not_found_error_require():
+    assert NotFoundError.require("x") == "x"
+    with pytest.raises(NotFoundError) as exc_info:
+        NotFoundError.require(None, "task not found.")
+    assert exc_info.value.message == "task not found."

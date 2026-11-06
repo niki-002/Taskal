@@ -1,117 +1,126 @@
-# アプリの処理
-# NOTE: v2のスキーマ上でv1のAPI仕様（limitを日付で扱う）を維持する暫定実装。
-#       Schedule連動の仕様には #29 で置き換える。
-from datetime import date, datetime, time, timedelta, timezone
+# kind=taskの予定と連動するタスク（Task）を扱う処理
+from typing import Annotated
 
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import Depends
+
+from app.core.errors import NotFoundError, ValidationError
+from app.core.pagination import Page, PageParams
 from app.models.auth import User
 from app.models.schedule import Schedule
 from app.models.task import Task
-from app.repositories import task as task_repository
-from app.schemas import task
-from app.services.ownership import require_owned
+from app.repositories.planned_transaction import (
+    PlannedTransactionRepository,
+    PlannedTransactionRepositoryDep,
+)
+from app.repositories.task import TaskRepository, TaskRepositoryDep
+from app.schemas.schedule import EndAfterStartError
+from app.schemas.task import TaskCreate, TaskListParams, TaskResponse, TaskUpdate
 
 TASK_NOT_FOUND = "task not found."
 
 
-# limit（日付）はUTCの0時を期限とし、その日1日分のScheduleとして保存する
-def _limit_to_due_date(limit: date) -> datetime:
-    return datetime.combine(limit, time.min, tzinfo=timezone.utc)
+class TaskService:
+    def __init__(
+            self,
+            repository: TaskRepository,
+            planned_transaction_repository: PlannedTransactionRepository,
+    ):
+        self.repository = repository
+        self.planned_transaction_repository = planned_transaction_repository
 
+    async def list_tasks(
+            self,
+            params: TaskListParams,
+            page: PageParams,
+            current_user: User
+    ) -> Page[TaskResponse]:
+        # カーソルは最後に返したタスクのschedule_idなので、そのタスクの due_date から続きを取得する
+        after = None
+        if page.after_id is not None:
+            after = await self.repository.get_by_id(page.after_id, current_user.id)
+            if after is None:
+                raise ValidationError(details=[{"field": "cursor", "reason": "invalid_cursor"}])
 
-def to_response(target: Task) -> task.TaskResponse:
-    schedule = target.schedule
-    return task.TaskResponse(
-        id=schedule.id,
-        owner_id=schedule.user_id,
-        title=schedule.title,
-        description=schedule.description or "",
-        limit=target.due_date.astimezone(timezone.utc).date(),
-        done_flag=target.done_flag,
-    )
-
-
-async def _get_own_task(
-        task_id: int,
-        db: AsyncSession,
-        current_user: User
-) -> Task:
-    return require_owned(
-        await task_repository.get_by_id(db, task_id, current_user.id),
-        TASK_NOT_FOUND
-    )
-
-
-async def get_tasks(
-        db: AsyncSession,
-        current_user: User
-) -> list[task.TaskResponse]:
-    return [
-        to_response(target)
-        for target in await task_repository.list_by_owner(db, current_user.id)
-    ]
-
-
-async def get_task(
-        task_id: int,
-        db: AsyncSession,
-        current_user: User
-) -> task.TaskResponse:
-    return to_response(await _get_own_task(task_id, db, current_user))
-
-
-async def create_task(
-        new_task: task.TaskCreate,
-        db: AsyncSession,
-        current_user: User
-) -> task.TaskResponse:
-    due_date = _limit_to_due_date(new_task.limit)
-    return to_response(await task_repository.add(
-        db,
-        Task(
-            due_date=due_date,
-            done_flag=False,
-            schedule=Schedule(
-                user_id=current_user.id,
-                title=new_task.title,
-                description=new_task.description,
-                start_at=due_date,
-                end_at=due_date + timedelta(days=1),
-                kind="task",
-            )
+        rows = await self.repository.list_page(
+            current_user.id,
+            page.limit,
+            done=params.done,
+            due_from=params.due_from,
+            due_to=params.due_to,
+            category=params.category,
+            after=after,
         )
-    ))
+        return Page.from_rows(
+            [self._to_response(row) for row in rows],
+            page.limit,
+            key=lambda item: item.schedule_id,
+        )
+
+    async def get_task(self, schedule_id: int, current_user: User) -> TaskResponse:
+        return self._to_response(await self._get_own_task(schedule_id, current_user))
+
+    # ScheduleとTaskを同じトランザクションで作成する
+    async def create_task(self, new_task: TaskCreate, current_user: User) -> TaskResponse:
+        return self._to_response(await self.repository.add(
+            Task(
+                due_date=new_task.due_date,
+                done_flag=False,
+                schedule=Schedule(
+                    user_id=current_user.id,
+                    kind="task",
+                    **new_task.schedule.model_dump(),
+                ),
+            )
+        ))
+
+    # TaskとScheduleの項目を同じトランザクションで更新する
+    async def update_task(
+            self,
+            schedule_id: int,
+            new_data: TaskUpdate,
+            current_user: User
+    ) -> TaskResponse:
+        target = await self._get_own_task(schedule_id, current_user)
+        changes = new_data.model_dump(exclude_unset=True, exclude={"schedule"})
+        schedule_changes = (
+            new_data.schedule.model_dump(exclude_unset=True)
+            if new_data.schedule is not None else {}
+        )
+
+        EndAfterStartError.check(
+            schedule_changes.get("start_at", target.schedule.start_at),
+            schedule_changes.get("end_at", target.schedule.end_at),
+            prefix="schedule.",
+        )
+
+        for field, value in changes.items():
+            setattr(target, field, value)
+        for field, value in schedule_changes.items():
+            setattr(target.schedule, field, value)
+        return self._to_response(await self.repository.save(target))
+
+    # 未実績化の収支見込を削除してからTaskとScheduleを削除し、まとめて1回でcommitする
+    async def delete_task(self, schedule_id: int, current_user: User) -> None:
+        target = await self._get_own_task(schedule_id, current_user)
+        await self.planned_transaction_repository.delete_unactualized_by_schedule(target.schedule_id)
+        await self.repository.delete(target)
+
+    async def _get_own_task(self, schedule_id: int, current_user: User) -> Task:
+        return NotFoundError.require(
+            await self.repository.get_by_id(schedule_id, current_user.id),
+            TASK_NOT_FOUND
+        )
+
+    @staticmethod
+    def _to_response(task: Task) -> TaskResponse:
+        return TaskResponse.model_validate(task)
 
 
-async def update_done_flag(
-        task_id: int,
-        db: AsyncSession,
-        current_user: User
-) -> task.TaskResponse:
-    target = await _get_own_task(task_id, db, current_user)
-    target.done_flag = not target.done_flag
-    return to_response(await task_repository.save(db, target))
+def get_task_service(
+        repository: TaskRepositoryDep,
+        planned_transaction_repository: PlannedTransactionRepositoryDep,
+) -> TaskService:
+    return TaskService(repository, planned_transaction_repository)
 
 
-async def update_task(
-        task_id: int,
-        new_data: task.TaskUpdate,
-        db: AsyncSession,
-        current_user: User
-) -> task.TaskResponse:
-    target = await _get_own_task(task_id, db, current_user)
-    due_date = _limit_to_due_date(new_data.limit)
-    target.schedule.title = new_data.title
-    target.schedule.description = new_data.description
-    target.schedule.start_at = due_date
-    target.schedule.end_at = due_date + timedelta(days=1)
-    target.due_date = due_date
-    return to_response(await task_repository.save(db, target))
-
-
-async def delete_task(
-        deleted_task_id: int,
-        db: AsyncSession,
-        current_user: User
-) -> None:
-    await task_repository.delete(db, await _get_own_task(deleted_task_id, db, current_user))
+TaskServiceDep = Annotated[TaskService, Depends(get_task_service)]

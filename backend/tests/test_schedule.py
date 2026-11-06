@@ -482,11 +482,14 @@ def test_get_task_schedule_includes_task_detail(client: TestClient, authenticate
     headers = authenticated_user["headers"]
     task = client.post(
         "/api/v1/tasks",
-        json={"title": "レポート", "description": "", "limit": "2026-09-12"},
+        json={
+            "schedule": {"title": "レポート", "start_at": _at(8, 18), "end_at": _at(8, 19)},
+            "due_date": "2026-09-12T00:00:00Z",
+        },
         headers=headers,
     ).json()
 
-    schedule = client.get(f"/api/v1/schedules/{task['id']}", headers=headers).json()
+    schedule = client.get(f"/api/v1/schedules/{task['schedule_id']}", headers=headers).json()
 
     assert schedule["kind"] == "task"
     assert schedule["shift"] is None
@@ -496,7 +499,7 @@ def test_get_task_schedule_includes_task_detail(client: TestClient, authenticate
     )
 
     response = client.patch(
-        f"/api/v1/schedules/{task['id']}",
+        f"/api/v1/schedules/{task['schedule_id']}",
         json={"title": "レポート（再提出）"},
         headers=headers,
     )
@@ -541,12 +544,15 @@ def test_delete_task_schedule_deletes_task(
     headers = authenticated_user["headers"]
     task = client.post(
         "/api/v1/tasks",
-        json={"title": "レポート", "description": "", "limit": "2026-09-12"},
+        json={
+            "schedule": {"title": "レポート", "start_at": _at(8, 18), "end_at": _at(8, 19)},
+            "due_date": "2026-09-12T00:00:00Z",
+        },
         headers=headers,
     ).json()
 
-    assert client.delete(f"/api/v1/schedules/{task['id']}", headers=headers).status_code == 204
-    assert client.get(f"/api/v1/tasks/{task['id']}", headers=headers).status_code == 404
+    assert client.delete(f"/api/v1/schedules/{task['schedule_id']}", headers=headers).status_code == 204
+    assert client.get(f"/api/v1/tasks/{task['schedule_id']}", headers=headers).status_code == 404
     with migrated_engine.connect() as connection:
         assert connection.scalar(text("SELECT count(*) FROM tasks")) == 0
 

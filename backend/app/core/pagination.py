@@ -1,7 +1,8 @@
 # カーソル方式ページングのユーティリティ
 import base64
 import binascii
-from typing import Annotated, Generic, Sequence, TypeVar
+from operator import attrgetter
+from typing import Annotated, Callable, Generic, Sequence, TypeVar
 
 from fastapi import Depends, Query
 from pydantic import BaseModel
@@ -37,11 +38,17 @@ class Page(BaseModel, Generic[T]):
     items: list[T]
     next_cursor: str | None = None
 
-    # リポジトリが limit+1 件(id昇順)取得した結果からPageを組み立てる
+    # リポジトリが limit+1 件取得した結果からPageを組み立てる
+    # カーソルには最後の要素の key（既定は id）を使う
     @classmethod
-    def from_rows(cls, rows: Sequence[T], limit: int) -> "Page[T]":
+    def from_rows(
+            cls,
+            rows: Sequence[T],
+            limit: int,
+            key: Callable[[T], int] = attrgetter("id"),
+    ) -> "Page[T]":
         items = list(rows[:limit])
-        next_cursor = Cursor.encode(items[-1].id) if len(rows) > limit else None
+        next_cursor = Cursor.encode(key(items[-1])) if len(rows) > limit else None
         return cls(items=items, next_cursor=next_cursor)
 
 
