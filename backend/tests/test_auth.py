@@ -8,13 +8,18 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.auth import User
+from app.models.schedule import Schedule
 from app.services.auth import TokenVerifier
 
 
 TASK_PAYLOAD = {
-    "title": "test task",
-    "description": "This is auth test.",
-    "limit": "2026-05-01",
+    "schedule": {
+        "title": "test task",
+        "description": "This is auth test.",
+        "start_at": "2026-05-01T00:00:00Z",
+        "end_at": "2026-05-01T01:00:00Z",
+    },
+    "due_date": "2026-05-01T00:00:00Z",
 }
 
 
@@ -110,11 +115,14 @@ def test_first_access_creates_user(client: TestClient, migrated_engine, auth_hea
 
     with Session(migrated_engine) as db:
         users = list(db.scalars(select(User).where(User.auth_subject == "auth0|first-access")))
+        owner_id = db.scalar(
+            select(Schedule.user_id).where(Schedule.id == response.json()["schedule_id"])
+        )
     assert len(users) == 1
     assert users[0].email == "first@example.com"
     assert users[0].username
     assert users[0].created_at is not None
-    assert response.json()["owner_id"] == users[0].id
+    assert owner_id == users[0].id
 
 
 def test_same_subject_is_same_user(client: TestClient, auth_headers):
@@ -123,13 +131,13 @@ def test_same_subject_is_same_user(client: TestClient, auth_headers):
 
     response = client.post("/api/v1/tasks", json=TASK_PAYLOAD, headers=first_headers)
     assert response.status_code == 201
-    owner_id = response.json()["owner_id"]
+    schedule_id = response.json()["schedule_id"]
 
     response = client.get("/api/v1/tasks", headers=second_headers)
     assert response.status_code == 200
-    tasks = response.json()
+    tasks = response.json()["items"]
     assert len(tasks) == 1
-    assert tasks[0]["owner_id"] == owner_id
+    assert tasks[0]["schedule_id"] == schedule_id
 
 
 def test_password_auth_endpoints_are_removed(client: TestClient):

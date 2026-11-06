@@ -38,18 +38,25 @@ class EndAfterStartError:
     def to_pydantic(cls) -> PydanticCustomError:
         return PydanticCustomError(cls.reason, cls.message)
 
+    # prefix はネストしたリクエストでのフィールド名の前置き（例: "schedule."）
     @classmethod
-    def to_detail(cls) -> dict[str, str]:
-        return {"field": cls.field, "reason": cls.reason}
+    def to_detail(cls, prefix: str = "") -> dict[str, str]:
+        return {"field": f"{prefix}{cls.field}", "reason": cls.reason}
+
+    # 片方だけ更新する場合など、更新後の値どうしで前後関係を確認する
+    @classmethod
+    def check(cls, start_at: datetime, end_at: datetime, prefix: str = "") -> None:
+        if end_at <= start_at:
+            raise ValidationError(details=[cls.to_detail(prefix)])
 
 
 # リクエストスキーマ
-class ScheduleCreate(BaseModel):
+# kind以外の共通項目。kindを指定しないTask・Shiftの作成でも使う
+class ScheduleBaseCreate(BaseModel):
     title: ScheduleTitle = Field(..., examples=["ゼミ"])
     description: ScheduleDescription | None = Field(None, examples=["進捗発表"])
     start_at: UTCDatetime
     end_at: UTCDatetime
-    kind: CreatableScheduleKind
     category: ScheduleCategory | None = Field(None, examples=["class"])
 
     @field_validator("end_at")
@@ -59,6 +66,10 @@ class ScheduleCreate(BaseModel):
         if start_at is not None and end_at <= start_at:
             raise EndAfterStartError.to_pydantic()
         return end_at
+
+
+class ScheduleCreate(ScheduleBaseCreate):
+    kind: CreatableScheduleKind
 
 
 # 指定したフィールドだけを更新する。kindは作成後に変更できないため受け付けない
@@ -120,7 +131,8 @@ class ScheduleShiftResponse(BaseModel):
     workplace: str | None
 
 
-class ScheduleResponse(BaseModel):
+# Scheduleの共通項目。Task・Shiftのレスポンスに入れるときは種別ごとの詳細を含めない
+class ScheduleBaseResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
@@ -130,9 +142,12 @@ class ScheduleResponse(BaseModel):
     end_at: datetime
     kind: ScheduleKind
     category: str | None
-    task: ScheduleTaskResponse | None = None
-    shift: ScheduleShiftResponse | None = None
     # Google Calendar連携は未実装のため、当面は not_connected 固定
     google_sync_status: GoogleSyncStatus = "not_connected"
     created_at: datetime
     updated_at: datetime
+
+
+class ScheduleResponse(ScheduleBaseResponse):
+    task: ScheduleTaskResponse | None = None
+    shift: ScheduleShiftResponse | None = None

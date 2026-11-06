@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 import pytest
 from fastapi.testclient import TestClient
+from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
 
 from app.core.errors import ConflictError
@@ -120,13 +121,24 @@ def test_get_me_reflects_email_synced_from_auth0(client: TestClient, auth_header
     assert response.json()["email"] == "new@example.com"
 
 
-def test_get_me_is_owner_of_tasks(client: TestClient, authenticated_user):
+def test_get_me_is_owner_of_tasks(client: TestClient, authenticated_user, migrated_engine):
     response = client.post(
         "/api/v1/tasks",
-        json={"title": "task", "description": "", "limit": "2026-05-01"},
+        json={
+            "schedule": {
+                "title": "task",
+                "start_at": "2026-05-01T00:00:00Z",
+                "end_at": "2026-05-01T01:00:00Z",
+            },
+            "due_date": "2026-05-01T00:00:00Z",
+        },
         headers=authenticated_user["headers"],
     )
-    owner_id = response.json()["owner_id"]
+    with migrated_engine.connect() as connection:
+        owner_id = connection.scalar(
+            text("SELECT user_id FROM schedules WHERE id = :id"),
+            {"id": response.json()["schedule_id"]},
+        )
 
     response = client.get("/api/v1/users/me", headers=authenticated_user["headers"])
 
