@@ -511,20 +511,20 @@ def test_get_shift_schedule_includes_shift_detail(
         client: TestClient, authenticated_user, migrated_engine
 ):
     headers = authenticated_user["headers"]
-    created = _create(client, headers)
-    # Shifts APIは未実装のため、kind=shiftの予定はDBに直接作る
-    with migrated_engine.begin() as connection:
-        connection.execute(
-            text("UPDATE schedules SET kind = 'shift' WHERE id = :id"),
-            {"id": created["id"]},
-        )
-        connection.execute(
-            text(
-                "INSERT INTO shifts (schedule_id, hourly_wage, break_minutes, workplace) "
-                "VALUES (:id, 1300, 60, '新宿店')"
-            ),
-            {"id": created["id"]},
-        )
+    created = client.post(
+        "/api/v1/shifts",
+        json={
+            "schedule": {
+                "title": "カフェ勤務",
+                "start_at": "2026-09-15T10:00:00+09:00",
+                "end_at": "2026-09-15T18:00:00+09:00",
+            },
+            "hourly_wage": 1300,
+            "break_minutes": 60,
+            "workplace": "新宿店",
+        },
+        headers=headers,
+    ).json()["schedule"]
 
     schedule = client.get(f"/api/v1/schedules/{created['id']}", headers=headers).json()
 
