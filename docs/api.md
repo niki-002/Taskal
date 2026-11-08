@@ -380,6 +380,7 @@ PATCH /schedules/{schedule_id}
 
 指定したフィールドだけを更新します。`kind` は作成後に変更できません。
 TaskまたはShift固有の情報は、それぞれのAPIで更新します。
+`kind=shift` の予定は、勤務時間が `break_minutes` より短くなる変更はできません。
 
 ### 6.6 予定削除
 
@@ -498,7 +499,12 @@ Shiftは単独では存在せず、`kind=shift` のScheduleと同じ `schedule_i
 GET /shifts?from=2026-09-01T00:00:00%2B09:00&to=2026-10-01T00:00:00%2B09:00
 ```
 
-Scheduleの `start_at` の昇順で返します。
+| クエリ | 型 | 必須 | 説明 |
+| --- | --- | --- | --- |
+| `from` | datetime | はい | 表示期間の開始 |
+| `to` | datetime | はい | 表示期間の終了。境界は含まない |
+
+期間と少なくとも一部が重なるシフトを、Scheduleの `start_at` の昇順で返します。
 
 ### 8.2 シフト作成
 
@@ -527,9 +533,10 @@ POST /shifts
 
 #### バリデーション
 
-- `hourly_wage` は0以上の整数
-- `break_minutes` は0以上で、勤務時間を超えない整数
-- `workplace` は最大200文字
+- `hourly_wage` は0以上の整数。必須
+- `break_minutes` は0以上で、勤務時間（分。1分未満は切り捨て）を超えない整数。省略時は `0`
+- `workplace` は最大200文字。省略可
+- `hourly_wage`・`break_minutes` の上限は `2147483647`
 
 #### 成功レスポンス
 
@@ -559,7 +566,8 @@ POST /shifts
 
 `estimated_income` は
 `(勤務時間（分）- break_minutes) × hourly_wage ÷ 60` を1円単位で算出した読み取り専用フィールドです。
-端数の丸め方法は実装前に確定します。
+勤務時間は分単位で扱い、`end_at - start_at` の1分未満は切り捨てます。
+端数は小数点以下を切り捨てます（例: 50分 × 1000円 ÷ 60 = 833.33... → `833`）。
 
 ### 8.3 シフト取得・更新・削除
 
@@ -570,6 +578,7 @@ DELETE /shifts/{schedule_id}
 ```
 
 PATCHではShiftとScheduleの項目を同時に更新できます。
+`break_minutes` が勤務時間を超えないことは、更新後の値で確認します。
 
 ```json
 {
@@ -940,6 +949,7 @@ Scheduleの作成・更新・削除時に、対応するGoogle Calendarイベン
 ### Account・収支
 
 - 金額はすべて1円単位の整数
+- Shiftの見込収入の端数は小数点以下を切り捨てる
 - PlannedTransactionとTransactionの `amount` は1以上
 - 指定するAccount、Schedule、PlannedTransactionはすべて自分の所有物であること
 - 実績化済みのPlannedTransactionは変更・削除不可
@@ -994,7 +1004,6 @@ DBとService層で次のように役割を分けます。
 
 ### 15.4 その他設計事項
 
-- Shiftの見込収入に端数が出た場合の丸め方法
 - `category` はユーザー定義マスタを作る
 - Google Calendar連携解除時に既存イベントを残す
 - ユーザー退会時の金融履歴とGoogle Calendarイベントの扱いは削除する

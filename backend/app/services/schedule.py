@@ -19,6 +19,7 @@ from app.schemas.schedule import (
     ScheduleResponse,
     ScheduleUpdate,
 )
+from app.schemas.shift import BreakExceedsWorkingTimeError
 
 SCHEDULE_NOT_FOUND = "schedule not found."
 
@@ -77,10 +78,18 @@ class ScheduleService:
         target = await self._get_own_schedule(schedule_id, current_user)
         changes = new_data.model_dump(exclude_unset=True)
 
-        EndAfterStartError.check(
-            changes.get("start_at", target.start_at),
-            changes.get("end_at", target.end_at),
-        )
+        start_at = changes.get("start_at", target.start_at)
+        end_at = changes.get("end_at", target.end_at)
+        EndAfterStartError.check(start_at, end_at)
+    
+        # シフトの勤務時間は休憩時間より短くできない
+        if target.shift is not None:
+            BreakExceedsWorkingTimeError.check(
+                start_at,
+                end_at,
+                target.shift.break_minutes,
+                field="end_at",
+            )
 
         for field, value in changes.items():
             setattr(target, field, value)
