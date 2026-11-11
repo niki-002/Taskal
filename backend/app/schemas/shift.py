@@ -15,10 +15,7 @@ from pydantic_core import PydanticCustomError
 
 from app.core.errors import ValidationError
 from app.schemas.schedule import ScheduleBaseCreate, ScheduleBaseResponse, ScheduleUpdate
-from app.schemas.types import UTCDatetime
-
-# DBのINTEGER列に保存できる最大値
-MAX_DB_INTEGER = 2_147_483_647
+from app.schemas.types import MAX_DB_INTEGER, UTCDatetime
 
 HourlyWage = Annotated[int, Field(ge=0, le=MAX_DB_INTEGER, examples=[1300])]
 BreakMinutes = Annotated[int, Field(ge=0, le=MAX_DB_INTEGER, examples=[60])]

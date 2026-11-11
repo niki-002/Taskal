@@ -600,9 +600,9 @@ DELETEはShiftだけでなく、対応するScheduleも削除して `204 No Cont
 | フィールド | 型 | 説明 |
 | --- | --- | --- |
 | `id` | integer | 資産ID |
-| `name` | string | 資産名。1〜100文字 |
+| `name` | string | 資産名。前後の空白を除いて1〜100文字 |
 | `type` | string | `cash`、`bank`、`e_money`、`other` |
-| `initial_balance` | integer | 登録時点の初期残高 |
+| `initial_balance` | integer | 登録時点の初期残高。省略時は `0`。負の値も指定できる（DBのINTEGERの範囲内） |
 | `current_balance` | integer | 初期残高と収支実績から計算した現在残高 |
 | `is_active` | boolean | 現在使用している資産か |
 | `created_at` | datetime | 作成日時 |
@@ -622,6 +622,9 @@ initial_balance
 GET /accounts?is_active=true
 GET /accounts/{account_id}
 ```
+
+`is_active` を省略した場合は、無効化した資産も含めて返します。一覧は `id` の昇順で返し、カーソルでページングします。
+無効化した資産も `GET /accounts/{account_id}` で取得できます。
 
 ### 9.3 資産作成
 
@@ -652,7 +655,10 @@ PATCH /accounts/{account_id}
 }
 ```
 
+更新できるのは `name`、`type`、`is_active` です。いずれも `null` は指定できません。
+
 `initial_balance` の変更は過去のすべての残高に影響するため、初回登録後は変更不可とします。
+`initial_balance` など更新できないフィールドを指定した場合は `422` を返します。
 残高を訂正する場合はTransactionとして調整額を登録します。
 
 ### 9.5 資産削除
@@ -662,6 +668,7 @@ DELETE /accounts/{account_id}
 ```
 
 取引履歴を保護するため物理削除せず、`is_active=false` に更新して `204 No Content` を返します。
+無効化済みの資産を再度削除した場合も `204 No Content` を返します。
 
 ## 10. Planned Transactions API
 
