@@ -5,7 +5,7 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.core.errors import register_exception_handlers
-from app.routers import schedule, shift, task, user
+from app.routers import account, schedule, shift, task, user
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent # mainの親の親=Taskalディレクトリを基準とする
@@ -19,6 +19,7 @@ api_v1.include_router(user.router)
 api_v1.include_router(task.router)
 api_v1.include_router(schedule.router)
 api_v1.include_router(shift.router)
+api_v1.include_router(account.router)
 
 app.include_router(api_v1)
 
